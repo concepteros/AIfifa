@@ -4,6 +4,10 @@ const ACCESS_UNLOCK_KEY = "fifa2026PremiumUnlocked";
 const SOLANA_USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 const SOLANA_USDC_RECIPIENT = "EwAh2VbsbgG2xWsFsDYMjmCUqq48cSkms1HATZDi3Vgq";
 const PREMIUM_PRICE_USDC = "19.9";
+const PREMIUM_PRICE_UNITS = 19_900_000n;
+const SOLANA_RPC_URL = "https://api.mainnet-beta.solana.com";
+const TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+const ASSOCIATED_TOKEN_PROGRAM_ID = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
 
 const TEAM_ALIASES = {
   "United States": ["usa", "u.s.", "usmnt", "united states", "america"],
@@ -314,17 +318,6 @@ function renderWalletState() {
     : "";
 }
 
-function buildSolanaPayUrl() {
-  if (!SOLANA_USDC_RECIPIENT) return "";
-  const params = new URLSearchParams({
-    amount: PREMIUM_PRICE_USDC,
-    "spl-token": SOLANA_USDC_MINT,
-    label: "FIFA 2026 Premium",
-    message: "Permanent premium access"
-  });
-  return `solana:${SOLANA_USDC_RECIPIENT}?${params.toString()}`;
-}
-
 function renderAccessPayment() {
   if (!walletState.address) return;
   els.accessWalletOptions.hidden = true;
@@ -332,18 +325,121 @@ function renderAccessPayment() {
   els.accessWalletAddress.textContent = shortAddress(walletState.address);
   setAccessStep("payment");
 
-  const payUrl = buildSolanaPayUrl();
-  if (!payUrl) {
+  if (!SOLANA_USDC_RECIPIENT) {
     els.accessPayButton.classList.add("disabled");
-    els.accessPayButton.removeAttribute("href");
+    els.accessPayButton.disabled = true;
     setAccessMessage("收款地址尚未配置。请先在 app.js 中设置 SOLANA_USDC_RECIPIENT。");
     return;
   }
 
   els.accessPayButton.classList.remove("disabled");
-  els.accessPayButton.href = payUrl;
+  els.accessPayButton.disabled = false;
   setAccessMessage("钱包已连接。付款完成后会自动检查到账状态。");
   startPaymentPolling();
+  void checkPremiumAccess();
+}
+
+function associatedTokenAddress(owner, mint) {
+  const { PublicKey } = window.solanaWeb3;
+  const tokenProgram = new PublicKey(TOKEN_PROGRAM_ID);
+  const associatedTokenProgram = new PublicKey(ASSOCIATED_TOKEN_PROGRAM_ID);
+  return PublicKey.findProgramAddressSync(
+    [owner.toBuffer(), tokenProgram.toBuffer(), mint.toBuffer()],
+    associatedTokenProgram
+  )[0];
+}
+
+function u64Bytes(value) {
+  const bytes = new Uint8Array(8);
+  let remaining = BigInt(value);
+  for (let index = 0; index < bytes.length; index += 1) {
+    bytes[index] = Number(remaining & 255n);
+    remaining >>= 8n;
+  }
+  return bytes;
+}
+
+function createRecipientAtaInstruction(payer, recipient, mint, recipientAta) {
+  const { PublicKey, SystemProgram, TransactionInstruction } = window.solanaWeb3;
+  return new TransactionInstruction({
+    programId: new PublicKey(ASSOCIATED_TOKEN_PROGRAM_ID),
+    keys: [
+      { pubkey: payer, isSigner: true, isWritable: true },
+      { pubkey: recipientAta, isSigner: false, isWritable: true },
+      { pubkey: recipient, isSigner: false, isWritable: false },
+      { pubkey: mint, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: new PublicKey(TOKEN_PROGRAM_ID), isSigner: false, isWritable: false }
+    ],
+    data: new Uint8Array([1])
+  });
+}
+
+function createTransferInstruction(owner, mint, sourceAta, recipientAta) {
+  const { PublicKey, TransactionInstruction } = window.solanaWeb3;
+  return new TransactionInstruction({
+    programId: new PublicKey(TOKEN_PROGRAM_ID),
+    keys: [
+      { pubkey: sourceAta, isSigner: false, isWritable: true },
+      { pubkey: mint, isSigner: false, isWritable: false },
+      { pubkey: recipientAta, isSigner: false, isWritable: true },
+      { pubkey: owner, isSigner: true, isWritable: false }
+    ],
+    data: new Uint8Array([12, ...u64Bytes(PREMIUM_PRICE_UNITS), 6])
+  });
+}
+
+async function payWithConnectedWallet() {
+  if (!walletState.provider || !walletState.address) {
+    setAccessMessage("请先连接钱包。");
+    return;
+  }
+
+  const { Connection, PublicKey, Transaction } = window.solanaWeb3 || {};
+  if (!Connection || !PublicKey || !Transaction) {
+    setAccessMessage("Solana 支付组件加载失败，请刷新页面后重试。");
+    return;
+  }
+
+  els.accessPayButton.disabled = true;
+  setAccessMessage("正在唤起钱包，请确认支付 19.9 USDC...");
+
+  try {
+    const connection = new Connection(SOLANA_RPC_URL, "confirmed");
+    const payer = new PublicKey(walletState.address);
+    const recipient = new PublicKey(SOLANA_USDC_RECIPIENT);
+    const mint = new PublicKey(SOLANA_USDC_MINT);
+    const sourceAta = associatedTokenAddress(payer, mint);
+    const recipientAta = associatedTokenAddress(recipient, mint);
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
+    const transaction = new Transaction({
+      feePayer: payer,
+      recentBlockhash: blockhash
+    });
+
+    transaction.add(createRecipientAtaInstruction(payer, recipient, mint, recipientAta));
+    transaction.add(createTransferInstruction(payer, mint, sourceAta, recipientAta));
+
+    let signature;
+    if (walletState.provider.signAndSendTransaction) {
+      const result = await walletState.provider.signAndSendTransaction(transaction);
+      signature = result.signature || result;
+    } else if (walletState.provider.signTransaction) {
+      const signed = await walletState.provider.signTransaction(transaction);
+      signature = await connection.sendRawTransaction(signed.serialize());
+    } else {
+      throw new Error("当前钱包不支持 Solana 交易签名。");
+    }
+
+    setAccessMessage("交易已发送，正在等待链上确认并自动解锁...");
+    await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, "confirmed");
+    await checkPremiumAccess();
+  } catch (error) {
+    console.warn(error);
+    setAccessMessage(error.message || "支付未完成，请检查钱包余额后重试。");
+  } finally {
+    els.accessPayButton.disabled = false;
+  }
 }
 
 function solanaAddress(result, provider) {
@@ -475,10 +571,12 @@ function setupWallet() {
     if (button) connectWallet(button.dataset.accessWallet);
   });
   els.accessCheckButton.addEventListener("click", checkPremiumAccess);
+  els.accessPayButton.addEventListener("click", payWithConnectedWallet);
   document.addEventListener("click", (event) => {
     if (!event.target.closest(".wallet-control")) setWalletMenu(false);
   });
-  if (localStorage.getItem(ACCESS_UNLOCK_KEY) === "true") {
+  const accessMode = localStorage.getItem(ACCESS_UNLOCK_KEY);
+  if (accessMode === "true" || accessMode === "developer") {
     els.accessGate.hidden = true;
   }
   renderWalletState();
