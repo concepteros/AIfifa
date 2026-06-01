@@ -55,11 +55,14 @@
           <a id="accessPayButton" class="access-pay-button" href="#" target="_blank" rel="noreferrer">
             支付 19.9 USDC
           </a>
-          <label>
-            <span>支付完成后填写交易签名</span>
-            <input id="accessSignature" type="text" placeholder="Solana transaction signature" />
-          </label>
-          <button id="accessVerifyButton" class="access-verify-button" type="button">验证并永久解锁</button>
+          <div class="access-waiting">
+            <span class="access-spinner"></span>
+            <div>
+              <strong>等待链上到账</strong>
+              <small>付款完成后将自动验证并永久解锁，无需填写交易签名。</small>
+            </div>
+          </div>
+          <button id="accessCheckButton" class="access-verify-button" type="button">立即检查到账</button>
         </div>
 
         <p id="accessMessage" class="access-message" aria-live="polite"></p>

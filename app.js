@@ -57,15 +57,15 @@ const els = {
   accessPayment: document.querySelector("#accessPayment"),
   accessWalletAddress: document.querySelector("#accessWalletAddress"),
   accessPayButton: document.querySelector("#accessPayButton"),
-  accessSignature: document.querySelector("#accessSignature"),
-  accessVerifyButton: document.querySelector("#accessVerifyButton"),
+  accessCheckButton: document.querySelector("#accessCheckButton"),
   accessMessage: document.querySelector("#accessMessage")
 };
 
 const walletState = {
   provider: null,
   address: "",
-  name: ""
+  name: "",
+  paymentPoll: null
 };
 
 function normalize(text) {
@@ -342,7 +342,8 @@ function renderAccessPayment() {
 
   els.accessPayButton.classList.remove("disabled");
   els.accessPayButton.href = payUrl;
-  setAccessMessage("钱包已连接。完成支付后，将交易签名粘贴到下方进行验证。");
+  setAccessMessage("钱包已连接。付款完成后会自动检查到账状态。");
+  startPaymentPolling();
 }
 
 function solanaAddress(result, provider) {
@@ -390,8 +391,7 @@ async function connectWallet(wallet) {
   }
 }
 
-async function verifyPremiumAccess() {
-  const signature = els.accessSignature.value.trim();
+async function checkPremiumAccess() {
   if (!walletState.address) {
     setAccessMessage("请先连接钱包。");
     return;
@@ -400,41 +400,56 @@ async function verifyPremiumAccess() {
     setAccessMessage("收款地址尚未配置，暂时不能验证支付。");
     return;
   }
-  if (!signature) {
-    setAccessMessage("请输入 Solana 交易签名。");
-    return;
-  }
-
   setAccessStep("verify");
-  setAccessMessage("正在验证链上交易...");
-  els.accessVerifyButton.disabled = true;
+  setAccessMessage("正在检查链上到账...");
+  els.accessCheckButton.disabled = true;
 
   try {
-    const response = await fetch("/api/payments/confirm-solana", {
+    const response = await fetch("/api/payments/status-solana", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        signature,
         walletAddress: walletState.address
       })
     });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok || !payload.success) {
-      throw new Error(payload.error || "支付验证失败。");
+    if (!response.ok) {
+      throw new Error(payload.error || "支付状态检查失败。");
+    }
+    if (!payload.success) {
+      setAccessMessage("暂未检测到到账。付款完成后系统会继续自动检查。");
+      setAccessStep("payment");
+      return;
     }
 
-    localStorage.setItem(ACCESS_UNLOCK_KEY, "true");
+    localStorage.setItem(ACCESS_UNLOCK_KEY, payload.developerMode ? "developer" : "true");
+    if (payload.developerMode) {
+      setAccessMessage("开发者模式已启用。");
+    }
+    stopPaymentPolling();
     els.accessGate.hidden = true;
   } catch (error) {
     console.warn(error);
-    setAccessMessage(error.message || "支付验证失败，请稍后重试。");
+    setAccessMessage(error.message || "支付状态检查失败，请稍后重试。");
     setAccessStep("payment");
   } finally {
-    els.accessVerifyButton.disabled = false;
+    els.accessCheckButton.disabled = false;
   }
 }
 
+function stopPaymentPolling() {
+  if (!walletState.paymentPoll) return;
+  clearInterval(walletState.paymentPoll);
+  walletState.paymentPoll = null;
+}
+
+function startPaymentPolling() {
+  stopPaymentPolling();
+  walletState.paymentPoll = setInterval(checkPremiumAccess, 6000);
+}
+
 async function disconnectWallet() {
+  stopPaymentPolling();
   try {
     if (walletState.provider?.disconnect) await walletState.provider.disconnect();
   } catch (error) {
@@ -459,7 +474,7 @@ function setupWallet() {
     const button = event.target.closest("[data-access-wallet]");
     if (button) connectWallet(button.dataset.accessWallet);
   });
-  els.accessVerifyButton.addEventListener("click", verifyPremiumAccess);
+  els.accessCheckButton.addEventListener("click", checkPremiumAccess);
   document.addEventListener("click", (event) => {
     if (!event.target.closest(".wallet-control")) setWalletMenu(false);
   });

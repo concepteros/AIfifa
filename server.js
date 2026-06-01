@@ -11,6 +11,13 @@ const RECIPIENT = new PublicKey(
 ).toBase58();
 const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 const PREMIUM_PRICE_UNITS = 19_900_000n;
+const DEVELOPER_WALLETS = new Set(
+  (process.env.DEVELOPER_WALLETS || RECIPIENT)
+    .split(",")
+    .map((address) => address.trim())
+    .filter(Boolean)
+    .map((address) => new PublicKey(address).toBase58()),
+);
 const ROOT = __dirname;
 const PAYMENT_FILE = path.join(ROOT, "data", "payments.json");
 const connection = new Connection(RPC_URL, "confirmed");
@@ -65,6 +72,10 @@ async function recordPayment(payment) {
   return paymentWriteQueue;
 }
 
+function findRecordedPayment(payments, payer) {
+  return payments.find((item) => item.payer === payer);
+}
+
 function payerFromTransaction(transaction) {
   return transaction.transaction.message.accountKeys
     .find((account) => account.signer)
@@ -88,6 +99,30 @@ function hasExpectedUsdcTransfer(transaction) {
   });
 }
 
+async function verifyTransaction(signature, expectedWallet) {
+  const transaction = await connection.getParsedTransaction(signature, {
+    commitment: "finalized",
+    maxSupportedTransactionVersion: 0,
+  });
+
+  if (!transaction || transaction.meta?.err || !hasExpectedUsdcTransfer(transaction)) {
+    return null;
+  }
+
+  const payer = payerFromTransaction(transaction);
+  if (!payer || payer !== expectedWallet) return null;
+
+  return {
+    amount: "19.9",
+    confirmedAt: new Date().toISOString(),
+    payer,
+    recipient: RECIPIENT,
+    signature,
+    status: "confirmed",
+    token: "USDC",
+  };
+}
+
 async function confirmSolanaPayment(request, response) {
   try {
     const { signature, walletAddress } = await readJsonBody(request);
@@ -96,38 +131,25 @@ async function confirmSolanaPayment(request, response) {
     }
 
     const normalizedWallet = new PublicKey(walletAddress).toBase58();
+    if (DEVELOPER_WALLETS.has(normalizedWallet)) {
+      return json(response, 200, {
+        success: true,
+        developerMode: true,
+        message: "Developer access is active",
+      });
+    }
+
     const processed = await readPayments();
     if (processed.some((item) => item.signature === signature)) {
       return json(response, 409, { error: "Transaction was already processed" });
     }
 
-    const transaction = await connection.getParsedTransaction(signature, {
-      commitment: "finalized",
-      maxSupportedTransactionVersion: 0,
-    });
-
-    if (!transaction || transaction.meta?.err) {
-      return json(response, 400, { error: "Transaction is not finalized" });
+    const payment = await verifyTransaction(signature, normalizedWallet);
+    if (!payment) {
+      return json(response, 400, { error: "Expected finalized 19.9 USDC payment was not found" });
     }
 
-    if (!hasExpectedUsdcTransfer(transaction)) {
-      return json(response, 400, { error: "Expected 19.9 USDC payment was not found" });
-    }
-
-    const payer = payerFromTransaction(transaction);
-    if (!payer || payer !== normalizedWallet) {
-      return json(response, 403, { error: "Payment signer does not match connected wallet" });
-    }
-
-    await recordPayment({
-      amount: "19.9",
-      confirmedAt: new Date().toISOString(),
-      payer,
-      recipient: RECIPIENT,
-      signature,
-      status: "confirmed",
-      token: "USDC",
-    });
+    await recordPayment(payment);
 
     return json(response, 200, {
       success: true,
@@ -137,6 +159,64 @@ async function confirmSolanaPayment(request, response) {
   } catch (error) {
     console.error("Solana payment verification failed:", error);
     return json(response, 400, { error: error.message || "Payment verification failed" });
+  }
+}
+
+async function checkSolanaPaymentStatus(request, response) {
+  try {
+    const { walletAddress } = await readJsonBody(request);
+    if (!walletAddress) {
+      return json(response, 400, { error: "Missing walletAddress" });
+    }
+
+    const normalizedWallet = new PublicKey(walletAddress).toBase58();
+    if (DEVELOPER_WALLETS.has(normalizedWallet)) {
+      return json(response, 200, {
+        success: true,
+        developerMode: true,
+        message: "Developer access is active",
+      });
+    }
+
+    const processed = await readPayments();
+    const existing = findRecordedPayment(processed, normalizedWallet);
+    if (existing) {
+      return json(response, 200, {
+        success: true,
+        amount: existing.amount,
+        signature: existing.signature,
+      });
+    }
+
+    const signatures = await connection.getSignaturesForAddress(
+      new PublicKey(normalizedWallet),
+      { limit: 20 },
+      "finalized",
+    );
+
+    for (const item of signatures) {
+      if (item.err) continue;
+      if (processed.some((payment) => payment.signature === item.signature)) continue;
+
+      const payment = await verifyTransaction(item.signature, normalizedWallet);
+      if (!payment) continue;
+
+      await recordPayment(payment);
+      return json(response, 200, {
+        success: true,
+        amount: payment.amount,
+        signature: payment.signature,
+      });
+    }
+
+    return json(response, 200, {
+      success: false,
+      pending: true,
+      message: "Payment has not been detected yet",
+    });
+  } catch (error) {
+    console.error("Solana payment status check failed:", error);
+    return json(response, 400, { error: error.message || "Payment status check failed" });
   }
 }
 
@@ -178,6 +258,10 @@ const server = http.createServer(async (request, response) => {
     return confirmSolanaPayment(request, response);
   }
 
+  if (request.method === "POST" && request.url === "/api/payments/status-solana") {
+    return checkSolanaPaymentStatus(request, response);
+  }
+
   if (request.method !== "GET") {
     return json(response, 405, { error: "Method not allowed" });
   }
@@ -188,4 +272,3 @@ const server = http.createServer(async (request, response) => {
 server.listen(PORT, HOST, () => {
   console.log(`FIFA 2026 server running at http://${HOST}:${PORT}`);
 });
-
