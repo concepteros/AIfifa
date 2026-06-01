@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>世界杯数据中心</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">FIFA World Cup 2026</p>
+        <h1>世界杯数据中心</h1>
+      </div>
+      <div class="live-pill" aria-live="polite">
+        <span class="pulse"></span>
+        <span id="refreshState">连接 Polymarket...</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Polymarket Odds · 球员库 · MVP · 历史阵容</p>
+          <h2>用 Polymarket 市场价格实时追踪世界杯夺冠胜率。</h2>
+          <p>
+            页面会从 Gamma API 搜索世界杯冠军相关市场，并把 outcome price 映射成各队隐含胜率。球员资料和往届资料仍使用本地资料库，可继续替换成体育数据 API。
+          </p>
+        </div>
+        <div class="hero-panel">
+          <div>
+            <span class="metric-label">参赛队伍</span>
+            <strong>48</strong>
+          </div>
+          <div>
+            <span class="metric-label">小组</span>
+            <strong>12</strong>
+          </div>
+          <div>
+            <span class="metric-label">历史届数</span>
+            <strong id="editionCount">-</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="toolbar" aria-label="筛选工具">
+        <label class="search">
+          <span>搜索</span>
+          <input id="searchInput" type="search" placeholder="球队、球员、国家、年份" />
+        </label>
+        <label>
+          <span>小组</span>
+          <select id="groupFilter">
+            <option value="all">全部</option>
+          </select>
+        </label>
+        <label>
+          <span>排序</span>
+          <select id="sortSelect">
+            <option value="probability">夺冠胜率</option>
+            <option value="name">球队名称</option>
+            <option value="group">小组</option>
+          </select>
+        </label>
+        <button id="refreshButton" type="button">立即刷新</button>
+      </section>
+
+      <section class="layout">
+        <article class="panel contenders">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Polymarket</p>
+              <h3>本届夺冠胜率</h3>
+            </div>
+            <span id="updatedAt"></span>
+          </div>
+          <div id="contendersList" class="contender-list"></div>
+        </article>
+
+        <article class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Player Watch</p>
+              <h3>最有价值球员候选</h3>
+            </div>
+          </div>
+          <div id="mvpList" class="mvp-list"></div>
+        </article>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Teams</p>
+            <h3>本届队伍与球员信息</h3>
+          </div>
+          <span class="hint">胜率来自 Polymarket 隐含价格；未匹配队伍保留本地估算</span>
+        </div>
+        <div id="teamGrid" class="team-grid"></div>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Archive</p>
+            <h3>往届世界杯队伍与球员信息</h3>
+          </div>
+          <div class="segmented" role="tablist" aria-label="历史视图">
+            <button class="active" data-history-view="editions" type="button">届次</button>
+            <button data-history-view="players" type="button">球员</button>
+          </div>
+        </div>
+        <div id="historyContent"></div>
+      </section>
+
+      <section class="panel api-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Gamma API</p>
+            <h3>Polymarket 数据接入</h3>
+          </div>
+        </div>
+        <form id="apiForm" class="api-form">
+          <label>
+            <span>搜索关键词</span>
+            <input id="apiUrl" type="text" placeholder="2026 world cup winner" />
+          </label>
+          <label>
+            <span>API Host</span>
+            <input id="apiToken" type="text" disabled />
+          </label>
+          <button type="submit">同步</button>
+        </form>
+        <p class="hint">
+          请求接口：/public-search?q=关键词。页面会读取 events[].markets[].outcomes 与 outcomePrices，并优先匹配 World Cup winner / champion 类市场。
+        </p>
+      </section>
+    </main>
+
+    <footer>
+      <span>数据说明：Polymarket 价格是预测市场隐含概率，不等同于官方概率或博彩赔率。</span>
+      <a href="https://docs.polymarket.com/api-reference/introduction" target="_blank" rel="noreferrer">Polymarket API 文档</a>
+      <a href="https://docs.polymarket.com/api-reference/search/search-markets-events-and-profiles" target="_blank" rel="noreferrer">Public Search</a>
+      <a href="https://gamma-api.polymarket.com" target="_blank" rel="noreferrer">Gamma API</a>
+    </footer>
+
+    <script src="./data.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
