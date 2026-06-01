@@ -7,24 +7,121 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
+    <div id="accessGate" class="access-gate">
+      <section class="access-modal" role="dialog" aria-modal="true" aria-labelledby="accessTitle">
+        <p class="eyebrow">Premium Access</p>
+        <h2 id="accessTitle">连接钱包并解锁世界杯数据中心</h2>
+        <p class="access-copy">
+          一次支付 19.9 USDC，即可永久使用实时胜率、球队资料和历史数据库。
+        </p>
+
+        <div class="access-steps">
+          <div class="access-step active" data-access-step="wallet">
+            <span>1</span>
+            <strong>连接钱包</strong>
+          </div>
+          <div class="access-step" data-access-step="payment">
+            <span>2</span>
+            <strong>支付 USDC</strong>
+          </div>
+          <div class="access-step" data-access-step="verify">
+            <span>3</span>
+            <strong>验证解锁</strong>
+          </div>
+        </div>
+
+        <div id="accessWalletOptions" class="access-wallet-options">
+          <button class="access-wallet-button" data-access-wallet="phantom" type="button">
+            <span class="wallet-icon phantom-icon">P</span>
+            <span>
+              <strong>Phantom</strong>
+              <small>连接 Solana 钱包</small>
+            </span>
+          </button>
+          <button class="access-wallet-button" data-access-wallet="okx-solana" type="button">
+            <span class="wallet-icon okx-icon">OKX</span>
+            <span>
+              <strong>OKX Wallet</strong>
+              <small>连接 Solana 钱包</small>
+            </span>
+          </button>
+        </div>
+
+        <div id="accessPayment" class="access-payment" hidden>
+          <div class="access-wallet-summary">
+            <span>已连接</span>
+            <strong id="accessWalletAddress"></strong>
+          </div>
+          <a id="accessPayButton" class="access-pay-button" href="#" target="_blank" rel="noreferrer">
+            支付 19.9 USDC
+          </a>
+          <label>
+            <span>支付完成后填写交易签名</span>
+            <input id="accessSignature" type="text" placeholder="Solana transaction signature" />
+          </label>
+          <button id="accessVerifyButton" class="access-verify-button" type="button">验证并永久解锁</button>
+        </div>
+
+        <p id="accessMessage" class="access-message" aria-live="polite"></p>
+      </section>
+    </div>
+
     <header class="topbar">
       <div>
         <p class="eyebrow">FIFA World Cup 2026</p>
         <h1>世界杯数据中心</h1>
       </div>
-      <div class="live-pill" aria-live="polite">
-        <span class="pulse"></span>
-        <span id="refreshState">连接 Polymarket...</span>
+      <div class="topbar-actions">
+        <div class="live-pill" aria-live="polite">
+          <span class="pulse"></span>
+          <span id="refreshState">正在更新数据...</span>
+        </div>
+        <div class="wallet-control">
+          <button id="walletButton" class="wallet-button" type="button">
+            <span class="wallet-dot"></span>
+            <span id="walletButtonText">Connect Wallet</span>
+          </button>
+          <div id="walletMenu" class="wallet-menu" hidden>
+            <div class="wallet-menu-header">
+              <div>
+                <p class="eyebrow">Wallet</p>
+                <strong>选择钱包</strong>
+              </div>
+              <button id="walletCloseButton" class="wallet-close" type="button" aria-label="关闭">×</button>
+            </div>
+            <div id="walletOptions" class="wallet-options">
+              <button class="wallet-option" data-wallet="phantom" type="button">
+                <span class="wallet-icon phantom-icon">P</span>
+                <span>
+                  <strong>Phantom</strong>
+                  <small>Solana 浏览器扩展</small>
+                </span>
+              </button>
+              <button class="wallet-option" data-wallet="okx-solana" type="button">
+                <span class="wallet-icon okx-icon">OKX</span>
+                <span>
+                  <strong>OKX Wallet</strong>
+                  <small>Solana 浏览器扩展</small>
+                </span>
+              </button>
+            </div>
+            <div id="walletConnected" class="wallet-connected" hidden>
+              <span id="walletConnectedLabel"></span>
+              <button id="walletDisconnectButton" type="button">断开连接</button>
+            </div>
+            <p id="walletMessage" class="wallet-message" aria-live="polite"></p>
+          </div>
+        </div>
       </div>
     </header>
 
     <main>
       <section class="hero">
         <div class="hero-copy">
-          <p class="eyebrow">Polymarket Odds · 球员库 · MVP · 历史阵容</p>
-          <h2>用 Polymarket 市场价格实时追踪世界杯夺冠胜率。</h2>
+          <p class="eyebrow">冠军胜率 · 球员库 · MVP · 历史阵容</p>
+          <h2>实时追踪世界杯夺冠胜率与球队资料。</h2>
           <p>
-            页面会从 Gamma API 搜索世界杯冠军相关市场，并把 outcome price 映射成各队隐含胜率。球员资料和往届资料仍使用本地资料库，可继续替换成体育数据 API。
+            页面自动在后台同步预测市场数据，并把价格映射成各队隐含胜率。球员资料和往届资料仍使用本地资料库，可继续替换成体育数据 API。
           </p>
         </div>
         <div class="hero-panel">
@@ -69,7 +166,7 @@
         <article class="panel contenders">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">Polymarket</p>
+              <p class="eyebrow">Live Odds</p>
               <h3>本届夺冠胜率</h3>
             </div>
             <span id="updatedAt"></span>
@@ -88,13 +185,31 @@
         </article>
       </section>
 
+      <section class="panel bracket-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Knockout Bracket</p>
+            <h3>世界杯即时对战图</h3>
+          </div>
+          <span id="bracketUpdatedAt">等待赛果 API</span>
+        </div>
+        <div class="bracket-legend">
+          <span><i class="legend-dot live"></i>进行中</span>
+          <span><i class="legend-dot qualified"></i>晋级</span>
+          <span><i class="legend-dot eliminated"></i>已淘汰</span>
+        </div>
+        <div class="bracket-scroll">
+          <div id="bracketGrid" class="bracket-grid"></div>
+        </div>
+      </section>
+
       <section class="panel">
         <div class="section-heading">
           <div>
             <p class="eyebrow">Teams</p>
             <h3>本届队伍与球员信息</h3>
           </div>
-          <span class="hint">胜率来自 Polymarket 隐含价格；未匹配队伍保留本地估算</span>
+          <span class="hint">胜率为市场隐含概率；未匹配队伍保留本地估算</span>
         </div>
         <div id="teamGrid" class="team-grid"></div>
       </section>
@@ -112,39 +227,14 @@
         </div>
         <div id="historyContent"></div>
       </section>
-
-      <section class="panel api-panel">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Gamma API</p>
-            <h3>Polymarket 数据接入</h3>
-          </div>
-        </div>
-        <form id="apiForm" class="api-form">
-          <label>
-            <span>搜索关键词</span>
-            <input id="apiUrl" type="text" placeholder="2026 world cup winner" />
-          </label>
-          <label>
-            <span>API Host</span>
-            <input id="apiToken" type="text" disabled />
-          </label>
-          <button type="submit">同步</button>
-        </form>
-        <p class="hint">
-          请求接口：/public-search?q=关键词。页面会读取 events[].markets[].outcomes 与 outcomePrices，并优先匹配 World Cup winner / champion 类市场。
-        </p>
-      </section>
     </main>
 
     <footer>
-      <span>数据说明：Polymarket 价格是预测市场隐含概率，不等同于官方概率或博彩赔率。</span>
-      <a href="https://docs.polymarket.com/api-reference/introduction" target="_blank" rel="noreferrer">Polymarket API 文档</a>
-      <a href="https://docs.polymarket.com/api-reference/search/search-markets-events-and-profiles" target="_blank" rel="noreferrer">Public Search</a>
-      <a href="https://gamma-api.polymarket.com" target="_blank" rel="noreferrer">Gamma API</a>
+      <span>数据说明：胜率为预测市场隐含概率，不等同于官方概率或博彩赔率。</span>
     </footer>
 
     <script src="./data.js"></script>
+    <script src="./bracket.js"></script>
     <script src="./app.js"></script>
   </body>
 </html>

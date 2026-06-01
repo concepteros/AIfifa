@@ -1,5 +1,9 @@
 const POLYMARKET_BASE_URL = "https://gamma-api.polymarket.com";
 const DEFAULT_POLYMARKET_QUERY = "2026 world cup winner";
+const ACCESS_UNLOCK_KEY = "fifa2026PremiumUnlocked";
+const SOLANA_USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+const SOLANA_USDC_RECIPIENT = "EwAh2VbsbgG2xWsFsDYMjmCUqq48cSkms1HATZDi3Vgq";
+const PREMIUM_PRICE_USDC = "19.9";
 
 const TEAM_ALIASES = {
   "United States": ["usa", "u.s.", "usmnt", "united states", "america"],
@@ -33,13 +37,35 @@ const els = {
   teamGrid: document.querySelector("#teamGrid"),
   mvpList: document.querySelector("#mvpList"),
   historyContent: document.querySelector("#historyContent"),
+  bracketGrid: document.querySelector("#bracketGrid"),
+  bracketUpdatedAt: document.querySelector("#bracketUpdatedAt"),
   updatedAt: document.querySelector("#updatedAt"),
   refreshButton: document.querySelector("#refreshButton"),
   refreshState: document.querySelector("#refreshState"),
   editionCount: document.querySelector("#editionCount"),
-  apiForm: document.querySelector("#apiForm"),
-  apiUrl: document.querySelector("#apiUrl"),
-  apiToken: document.querySelector("#apiToken")
+  walletButton: document.querySelector("#walletButton"),
+  walletButtonText: document.querySelector("#walletButtonText"),
+  walletMenu: document.querySelector("#walletMenu"),
+  walletCloseButton: document.querySelector("#walletCloseButton"),
+  walletOptions: document.querySelector("#walletOptions"),
+  walletConnected: document.querySelector("#walletConnected"),
+  walletConnectedLabel: document.querySelector("#walletConnectedLabel"),
+  walletDisconnectButton: document.querySelector("#walletDisconnectButton"),
+  walletMessage: document.querySelector("#walletMessage"),
+  accessGate: document.querySelector("#accessGate"),
+  accessWalletOptions: document.querySelector("#accessWalletOptions"),
+  accessPayment: document.querySelector("#accessPayment"),
+  accessWalletAddress: document.querySelector("#accessWalletAddress"),
+  accessPayButton: document.querySelector("#accessPayButton"),
+  accessSignature: document.querySelector("#accessSignature"),
+  accessVerifyButton: document.querySelector("#accessVerifyButton"),
+  accessMessage: document.querySelector("#accessMessage")
+};
+
+const walletState = {
+  provider: null,
+  address: "",
+  name: ""
 };
 
 function normalize(text) {
@@ -253,9 +279,194 @@ function setupFilters() {
   });
 
   els.refreshButton.addEventListener("click", refreshData);
-  els.apiUrl.value = state.polymarket.query;
-  els.apiToken.value = POLYMARKET_BASE_URL;
-  els.apiForm.addEventListener("submit", connectPolymarket);
+}
+
+function shortAddress(address) {
+  return address ? `${address.slice(0, 5)}...${address.slice(-4)}` : "";
+}
+
+function setWalletMessage(message) {
+  els.walletMessage.textContent = message;
+}
+
+function setAccessMessage(message) {
+  els.accessMessage.textContent = message;
+}
+
+function setAccessStep(step) {
+  document.querySelectorAll("[data-access-step]").forEach((item) => {
+    item.classList.toggle("active", item.dataset.accessStep === step);
+  });
+}
+
+function setWalletMenu(open) {
+  els.walletMenu.hidden = !open;
+  if (open) setWalletMessage("");
+}
+
+function renderWalletState() {
+  const connected = Boolean(walletState.address);
+  els.walletButtonText.textContent = connected ? shortAddress(walletState.address) : "Connect Wallet";
+  els.walletOptions.hidden = connected;
+  els.walletConnected.hidden = !connected;
+  els.walletConnectedLabel.textContent = connected
+    ? `${walletState.name} · ${shortAddress(walletState.address)}`
+    : "";
+}
+
+function buildSolanaPayUrl() {
+  if (!SOLANA_USDC_RECIPIENT) return "";
+  const params = new URLSearchParams({
+    amount: PREMIUM_PRICE_USDC,
+    "spl-token": SOLANA_USDC_MINT,
+    label: "FIFA 2026 Premium",
+    message: "Permanent premium access"
+  });
+  return `solana:${SOLANA_USDC_RECIPIENT}?${params.toString()}`;
+}
+
+function renderAccessPayment() {
+  if (!walletState.address) return;
+  els.accessWalletOptions.hidden = true;
+  els.accessPayment.hidden = false;
+  els.accessWalletAddress.textContent = shortAddress(walletState.address);
+  setAccessStep("payment");
+
+  const payUrl = buildSolanaPayUrl();
+  if (!payUrl) {
+    els.accessPayButton.classList.add("disabled");
+    els.accessPayButton.removeAttribute("href");
+    setAccessMessage("收款地址尚未配置。请先在 app.js 中设置 SOLANA_USDC_RECIPIENT。");
+    return;
+  }
+
+  els.accessPayButton.classList.remove("disabled");
+  els.accessPayButton.href = payUrl;
+  setAccessMessage("钱包已连接。完成支付后，将交易签名粘贴到下方进行验证。");
+}
+
+function solanaAddress(result, provider) {
+  return result?.publicKey?.toString?.() || provider?.publicKey?.toString?.() || "";
+}
+
+async function connectPhantom() {
+  const provider = window.phantom?.solana;
+  if (!provider?.isPhantom) {
+    setWalletMessage("未检测到 Phantom 扩展，请先安装后重试。");
+    return;
+  }
+  const result = await provider.connect();
+  walletState.provider = provider;
+  walletState.address = solanaAddress(result, provider);
+  walletState.name = "Phantom";
+}
+
+async function connectOkxSolana() {
+  const provider = window.okxwallet?.solana;
+  if (!provider) {
+    setWalletMessage("未检测到 OKX Wallet 扩展，请先安装或使用移动端 WalletConnect。");
+    return;
+  }
+  const result = await provider.connect();
+  walletState.provider = provider;
+  walletState.address = solanaAddress(result, provider);
+  walletState.name = "OKX Wallet · Solana";
+}
+
+async function connectWallet(wallet) {
+  setWalletMessage("正在连接钱包...");
+  try {
+    if (wallet === "phantom") await connectPhantom();
+    if (wallet === "okx-solana") await connectOkxSolana();
+
+    if (walletState.address) {
+      renderWalletState();
+      setWalletMessage("钱包已连接。");
+      renderAccessPayment();
+    }
+  } catch (error) {
+    console.warn(error);
+    setWalletMessage("连接已取消或失败，请重试。");
+  }
+}
+
+async function verifyPremiumAccess() {
+  const signature = els.accessSignature.value.trim();
+  if (!walletState.address) {
+    setAccessMessage("请先连接钱包。");
+    return;
+  }
+  if (!SOLANA_USDC_RECIPIENT) {
+    setAccessMessage("收款地址尚未配置，暂时不能验证支付。");
+    return;
+  }
+  if (!signature) {
+    setAccessMessage("请输入 Solana 交易签名。");
+    return;
+  }
+
+  setAccessStep("verify");
+  setAccessMessage("正在验证链上交易...");
+  els.accessVerifyButton.disabled = true;
+
+  try {
+    const response = await fetch("/api/payments/confirm-solana", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        signature,
+        walletAddress: walletState.address
+      })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload.success) {
+      throw new Error(payload.error || "支付验证失败。");
+    }
+
+    localStorage.setItem(ACCESS_UNLOCK_KEY, "true");
+    els.accessGate.hidden = true;
+  } catch (error) {
+    console.warn(error);
+    setAccessMessage(error.message || "支付验证失败，请稍后重试。");
+    setAccessStep("payment");
+  } finally {
+    els.accessVerifyButton.disabled = false;
+  }
+}
+
+async function disconnectWallet() {
+  try {
+    if (walletState.provider?.disconnect) await walletState.provider.disconnect();
+  } catch (error) {
+    console.warn(error);
+  }
+  walletState.provider = null;
+  walletState.address = "";
+  walletState.name = "";
+  renderWalletState();
+  setWalletMessage("钱包已断开。");
+}
+
+function setupWallet() {
+  els.walletButton.addEventListener("click", () => setWalletMenu(els.walletMenu.hidden));
+  els.walletCloseButton.addEventListener("click", () => setWalletMenu(false));
+  els.walletDisconnectButton.addEventListener("click", disconnectWallet);
+  els.walletOptions.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-wallet]");
+    if (button) connectWallet(button.dataset.wallet);
+  });
+  els.accessWalletOptions.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-access-wallet]");
+    if (button) connectWallet(button.dataset.accessWallet);
+  });
+  els.accessVerifyButton.addEventListener("click", verifyPremiumAccess);
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest(".wallet-control")) setWalletMenu(false);
+  });
+  if (localStorage.getItem(ACCESS_UNLOCK_KEY) === "true") {
+    els.accessGate.hidden = true;
+  }
+  renderWalletState();
 }
 
 function filteredTeams() {
@@ -295,7 +506,9 @@ function renderTeams() {
     .map((team) => `
       <article class="team-card">
         <div class="team-name">
-          <strong>${team.name}</strong>
+          <a class="team-detail-link" href="./team.html?team=${encodeURIComponent(team.code)}">
+            <strong>${team.name}</strong>
+          </a>
           <span>${team.code} · 小组 ${team.group}</span>
         </div>
         <div class="team-meta">
@@ -303,9 +516,9 @@ function renderTeams() {
           <span>${team.probability.toFixed(1)}%</span>
           <span>${team.form}</span>
         </div>
-        ${team.marketSource ? `
-          <a class="market-link" href="${team.marketUrl || "https://polymarket.com"}" target="_blank" rel="noreferrer">
-            ${team.marketSource}
+        ${team.marketUrl ? `
+          <a class="market-link" href="${team.marketUrl}" target="_blank" rel="noreferrer">
+            查看 Polymarket 市场
           </a>
         ` : ""}
         <div class="players">
@@ -338,6 +551,42 @@ function renderMvp() {
       </article>
     `)
     .join("");
+}
+
+function renderBracketTeam(team) {
+  const score = team.score === null ? "-" : team.score;
+  return `
+    <div class="bracket-team ${team.state}">
+      <span>${team.name}</span>
+      <strong>${score}</strong>
+    </div>
+  `;
+}
+
+function renderBracket() {
+  const bracket = window.WORLD_CUP_BRACKET;
+  if (!bracket || !els.bracketGrid) return;
+
+  els.bracketUpdatedAt.textContent = bracket.source === "demo"
+    ? "赛程演示 · 等待赛果 API"
+    : `更新：${formatDate(bracket.updatedAt)}`;
+
+  els.bracketGrid.innerHTML = bracket.rounds.map((round) => `
+    <section class="bracket-round">
+      <h4>${round.name}</h4>
+      <div class="bracket-matches">
+        ${round.matches.map((match) => `
+          <article class="bracket-match ${match.status}">
+            <div class="bracket-match-meta">
+              <span>${match.date}</span>
+              <strong>${match.status === "live" ? `LIVE ${match.minute || ""}` : match.id}</strong>
+            </div>
+            ${match.teams.map(renderBracketTeam).join("")}
+          </article>
+        `).join("")}
+      </div>
+    </section>
+  `).join("");
 }
 
 function renderHistory() {
@@ -386,6 +635,7 @@ function render() {
   renderMeta();
   renderContenders();
   renderMvp();
+  renderBracket();
   renderTeams();
   renderHistory();
 }
@@ -395,11 +645,11 @@ function setRefreshLabel(text) {
 }
 
 async function refreshData() {
-  setRefreshLabel("正在同步 Polymarket...");
+  setRefreshLabel("正在更新实时数据...");
   try {
     const markets = await fetchPolymarketMarkets();
     const matched = applyPolymarketMarkets(markets);
-    setRefreshLabel(`Polymarket 实时 · 匹配 ${matched} 队`);
+    setRefreshLabel(`实时数据 · 已更新 ${matched} 队`);
     render();
   } catch (error) {
     console.warn(error);
@@ -409,19 +659,13 @@ async function refreshData() {
       status: "demo",
       note: `Polymarket 同步失败：${error.message}`
     };
-    setRefreshLabel("Polymarket 失败 · 使用本地数据");
+    setRefreshLabel("实时数据失败 · 使用本地数据");
     render();
   }
 }
 
-async function connectPolymarket(event) {
-  event.preventDefault();
-  state.polymarket.query = els.apiUrl.value.trim() || DEFAULT_POLYMARKET_QUERY;
-  localStorage.setItem("wcPolymarketQuery", state.polymarket.query);
-  await refreshData();
-}
-
 setupFilters();
+setupWallet();
 render();
 refreshData();
 setInterval(refreshData, 30000);
