@@ -8,6 +8,9 @@ const PREMIUM_PRICE_UNITS = 19_900_000n;
 const SOLANA_RPC_URL = "https://api.mainnet-beta.solana.com";
 const TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 const ASSOCIATED_TOKEN_PROGRAM_ID = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
+const DEVELOPER_WALLETS = new Set([
+  "EwAh2VbsbgG2xWsFsDYMjmCUqq48cSkms1HATZDi3Vgq"
+]);
 
 const TEAM_ALIASES = {
   "United States": ["usa", "u.s.", "usmnt", "united states", "america"],
@@ -320,6 +323,7 @@ function renderWalletState() {
 
 function renderAccessPayment() {
   if (!walletState.address) return;
+  if (unlockDeveloperWallet()) return;
   els.accessWalletOptions.hidden = true;
   els.accessPayment.hidden = false;
   els.accessWalletAddress.textContent = shortAddress(walletState.address);
@@ -337,6 +341,15 @@ function renderAccessPayment() {
   setAccessMessage("钱包已连接。付款完成后会自动检查到账状态。");
   startPaymentPolling();
   void checkPremiumAccess();
+}
+
+function unlockDeveloperWallet() {
+  if (!DEVELOPER_WALLETS.has(walletState.address)) return false;
+  localStorage.setItem(ACCESS_UNLOCK_KEY, "developer");
+  stopPaymentPolling();
+  els.accessGate.hidden = true;
+  setAccessMessage("开发者模式已启用。");
+  return true;
 }
 
 function associatedTokenAddress(owner, mint) {

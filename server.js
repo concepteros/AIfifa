@@ -20,7 +20,6 @@ const DEVELOPER_WALLETS = new Set(
 );
 const ROOT = __dirname;
 const PAYMENT_FILE = path.join(ROOT, "data", "payments.json");
-const WEB3_BROWSER_BUNDLE = "node_modules/@solana/web3.js/lib/index.iife.min.js";
 const connection = new Connection(RPC_URL, "confirmed");
 
 const MIME_TYPES = {
@@ -226,9 +225,7 @@ async function serveStatic(request, response) {
   const relativePath = decodeURIComponent(url.pathname === "/" ? "index.html" : url.pathname.slice(1));
   const filePath = path.resolve(ROOT, relativePath);
 
-  const blockedDependency =
-    relativePath.startsWith("node_modules/") &&
-    relativePath !== WEB3_BROWSER_BUNDLE;
+  const blockedDependency = relativePath.startsWith("node_modules/");
 
   if (!filePath.startsWith(ROOT) || relativePath.startsWith("data/") || blockedDependency) {
     response.writeHead(403);
