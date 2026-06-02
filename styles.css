@@ -1530,6 +1530,13 @@ footer a {
   font-size: 13px;
 }
 
+.prediction-current {
+  margin-top: 6px;
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 900;
+}
+
 .prediction-results {
   display: grid;
   gap: 14px;

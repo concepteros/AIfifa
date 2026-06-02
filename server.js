@@ -241,7 +241,7 @@ async function readPredictions() {
   }
 }
 
-function summarizePredictions(predictions) {
+function summarizePredictions(predictions, voterId = "") {
   const counts = new Map();
   predictions.forEach(({ teamCode }) => {
     counts.set(teamCode, (counts.get(teamCode) || 0) + 1);
@@ -254,7 +254,11 @@ function summarizePredictions(predictions) {
       votes,
     }))
     .sort((a, b) => b.votes - a.votes || a.teamCode.localeCompare(b.teamCode));
-  return { results, total };
+  return {
+    currentTeamCode: predictions.find((item) => item.voterId === voterId)?.teamCode || "",
+    results,
+    total,
+  };
 }
 
 async function savePrediction(voterId, teamCode) {
@@ -275,13 +279,14 @@ async function savePrediction(voterId, teamCode) {
     await fs.writeFile(PREDICTION_FILE, `${JSON.stringify(predictions, null, 2)}\n`, "utf8");
   });
   await predictionWriteQueue;
-  return summarizePredictions(await readPredictions());
+  return summarizePredictions(await readPredictions(), voterId);
 }
 
 async function handlePredictions(request, response) {
   try {
+    const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
     if (request.method === "GET") {
-      return json(response, 200, summarizePredictions(await readPredictions()));
+      return json(response, 200, summarizePredictions(await readPredictions(), url.searchParams.get("voterId") || ""));
     }
 
     const { teamCode, voterId } = await readJsonBody(request);
@@ -506,7 +511,7 @@ const server = http.createServer(async (request, response) => {
     return checkSolanaPaymentStatus(request, response);
   }
 
-  if ((request.method === "GET" || request.method === "POST") && request.url === "/api/predictions") {
+  if ((request.method === "GET" || request.method === "POST") && request.url.startsWith("/api/predictions")) {
     return handlePredictions(request, response);
   }
 

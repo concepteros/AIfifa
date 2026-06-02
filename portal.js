@@ -1,5 +1,7 @@
 const page = document.body.dataset.portalPage;
 const POLL_INTERVAL_MS = 15_000;
+const PREDICTION_POLL_INTERVAL_MS = 10_000;
+let fallbackVoterId = "";
 const MVP_WINNERS = [
   { year: 1978, name: "Mario Kempes", team: "Argentina" },
   { year: 1982, name: "Paolo Rossi", team: "Italy" },
@@ -155,15 +157,31 @@ function renderMvpHistory() {
 }
 
 function getVoterId() {
-  const existing = localStorage.getItem("fifa2026VoterId");
-  if (existing) return existing;
-  const voterId = crypto.randomUUID();
-  localStorage.setItem("fifa2026VoterId", voterId);
+  try {
+    const existing = localStorage.getItem("fifa2026VoterId");
+    if (existing) return existing;
+  } catch {}
+
+  if (fallbackVoterId) return fallbackVoterId;
+  const voterId = crypto.randomUUID?.() || `vote-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  fallbackVoterId = voterId;
+  try {
+    localStorage.setItem("fifa2026VoterId", voterId);
+  } catch {}
   return voterId;
 }
 
 function renderPredictionResults(payload) {
   const teamNames = new Map(window.WORLD_CUP_DATA.teams.map((team) => [team.code, team.name]));
+  const currentName = teamNames.get(payload.currentTeamCode);
+  const current = document.querySelector("#predictionCurrent");
+  const submitButton = document.querySelector("#predictionSubmitButton");
+
+  current.textContent = `你的预测：${currentName || "尚未提交"}`;
+  submitButton.textContent = currentName ? "修改预测" : "提交预测";
+  if (payload.currentTeamCode) {
+    document.querySelector("#predictionTeam").value = payload.currentTeamCode;
+  }
   document.querySelector("#predictionTotal").textContent = `${payload.total} 票`;
   document.querySelector("#predictionResults").innerHTML = payload.results.length
     ? payload.results.map((result) => `
@@ -179,7 +197,8 @@ function renderPredictionResults(payload) {
 }
 
 async function refreshPredictions() {
-  const response = await fetch("/api/predictions", {
+  const voterId = encodeURIComponent(getVoterId());
+  const response = await fetch(`/api/predictions?voterId=${voterId}`, {
     headers: { Accept: "application/json" }
   });
   const payload = await response.json();
@@ -217,6 +236,9 @@ function setupPredictions() {
   refreshPredictions().catch((error) => {
     document.querySelector("#predictionMessage").textContent = error.message;
   });
+  setInterval(() => {
+    refreshPredictions().catch(() => {});
+  }, PREDICTION_POLL_INTERVAL_MS);
 }
 
 if (page === "groups") {
