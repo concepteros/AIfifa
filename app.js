@@ -50,6 +50,8 @@ const els = {
   liveMatchList: document.querySelector("#liveMatchList"),
   standingsList: document.querySelector("#standingsList"),
   footballUpdatedAt: document.querySelector("#footballUpdatedAt"),
+  marketSidebarList: document.querySelector("#marketSidebarList"),
+  marketSidebarUpdatedAt: document.querySelector("#marketSidebarUpdatedAt"),
   updatedAt: document.querySelector("#updatedAt"),
   refreshButton: document.querySelector("#refreshButton"),
   refreshState: document.querySelector("#refreshState"),
@@ -815,6 +817,52 @@ async function refreshLiveFootball() {
   }
 }
 
+function renderMarketSidebar(payload) {
+  if (!els.marketSidebarList || !els.marketSidebarUpdatedAt) return;
+  els.marketSidebarUpdatedAt.textContent = `更新：${formatDate(payload.updatedAt)}`;
+
+  if (!payload.games.length) {
+    els.marketSidebarList.innerHTML = `
+      <div class="market-sidebar-empty">
+        <strong>等待开赛</strong>
+        <span>比赛盘口将在开赛后即时更新。</span>
+      </div>
+    `;
+    return;
+  }
+
+  els.marketSidebarList.innerHTML = payload.games.map((game) => `
+    <article class="market-game">
+      <a href="${game.eventUrl}" target="_blank" rel="noreferrer">${game.title}</a>
+      ${game.startTime ? `<time datetime="${game.startTime}">${formatDate(game.startTime)}</time>` : ""}
+      ${game.markets.map((market) => `
+        <section class="market-line">
+          <strong>${market.question}</strong>
+          <div>
+            ${market.outcomes.map((outcome) => `
+              <span>${outcome.label}<b>${outcome.percentage.toFixed(1)}%</b></span>
+            `).join("")}
+          </div>
+        </section>
+      `).join("")}
+    </article>
+  `).join("");
+}
+
+async function refreshMarketSidebar() {
+  try {
+    const response = await fetch("/api/polymarket/world-cup-games", {
+      headers: { Accept: "application/json" }
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || "盘口请求失败");
+    renderMarketSidebar(payload);
+  } catch (error) {
+    console.warn(error);
+    renderMarketSidebar({ games: [], updatedAt: new Date().toISOString() });
+  }
+}
+
 function renderHistory() {
   if (state.historyView === "players") {
     els.historyContent.innerHTML = `
@@ -896,3 +944,5 @@ refreshData();
 setInterval(refreshData, 30000);
 refreshLiveFootball();
 setInterval(refreshLiveFootball, 15000);
+refreshMarketSidebar();
+setInterval(refreshMarketSidebar, 15000);

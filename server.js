@@ -24,6 +24,8 @@ const API_FOOTBALL_KEY = process.env.API_FOOTBALL_KEY || "";
 const WORLD_CUP_LEAGUE_ID = "1";
 const WORLD_CUP_SEASON = "2026";
 const FOOTBALL_CACHE_MS = 15_000;
+const POLYMARKET_BASE_URL = "https://gamma-api.polymarket.com";
+const POLYMARKET_CACHE_MS = 15_000;
 const DEVELOPER_WALLETS = new Set(
   (process.env.DEVELOPER_WALLETS || RECIPIENT)
     .split(",")
@@ -54,6 +56,10 @@ const MIME_TYPES = {
 let paymentWriteQueue = Promise.resolve();
 let predictionWriteQueue = Promise.resolve();
 let footballCache = {
+  expiresAt: 0,
+  payload: null,
+};
+let polymarketGamesCache = {
   expiresAt: 0,
   payload: null,
 };
@@ -97,6 +103,90 @@ async function fetchFootball(pathname, params = {}) {
     throw new Error(`API-Football: ${apiErrors.map((key) => payload.errors[key]).join(", ")}`);
   }
   return payload.response || [];
+}
+
+function parseMaybeJson(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== "string") return [];
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value.split(",").map((item) => item.trim()).filter(Boolean);
+  }
+}
+
+function asPercentage(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return null;
+  return Math.max(0, Math.min(100, number <= 1 ? number * 100 : number));
+}
+
+function isWorldCupGameEvent(event) {
+  const text = `${event.title || ""} ${event.slug || ""}`.toLowerCase();
+  return (
+    text.includes("world cup") &&
+    (text.includes(" vs ") || text.includes("-vs-")) &&
+    !text.includes("women") &&
+    !text.includes("u19") &&
+    !text.includes("qualifier")
+  );
+}
+
+function formatPolymarketGame(event) {
+  return {
+    eventUrl: `https://polymarket.com/event/${event.slug}`,
+    id: event.id,
+    markets: (event.markets || [])
+      .filter((market) => market && !market.closed && market.active !== false)
+      .slice(0, 6)
+      .map((market) => {
+        const outcomes = parseMaybeJson(market.outcomes);
+        const prices = parseMaybeJson(market.outcomePrices);
+        return {
+          id: market.id,
+          marketType: market.sportsMarketType || market.marketType || "",
+          outcomes: outcomes.map((outcome, index) => ({
+            label: String(outcome),
+            percentage: asPercentage(prices[index]),
+          })).filter((outcome) => outcome.percentage !== null),
+          question: market.question || market.groupItemTitle || "Match odds",
+        };
+      }),
+    startTime: event.startTime || event.startDate || "",
+    title: event.title || event.slug,
+  };
+}
+
+async function getPolymarketWorldCupGames() {
+  if (polymarketGamesCache.payload && polymarketGamesCache.expiresAt > Date.now()) {
+    return polymarketGamesCache.payload;
+  }
+
+  const url = new URL("/public-search", POLYMARKET_BASE_URL);
+  Object.entries({
+    events_status: "active",
+    keep_closed_markets: "0",
+    limit_per_type: "100",
+    q: "world cup",
+    search_profiles: "false",
+    search_tags: "false",
+  }).forEach(([key, value]) => url.searchParams.set(key, value));
+
+  const response = await fetch(url, { headers: { Accept: "application/json" } });
+  if (!response.ok) throw new Error(`Polymarket ${response.status}`);
+  const search = await response.json();
+  const games = (search.events || []).filter(isWorldCupGameEvent).map(formatPolymarketGame);
+  const payload = {
+    games,
+    message: games.length ? "" : "等待开赛",
+    pollIntervalMs: POLYMARKET_CACHE_MS,
+    updatedAt: new Date().toISOString(),
+  };
+  polymarketGamesCache = {
+    expiresAt: Date.now() + POLYMARKET_CACHE_MS,
+    payload,
+  };
+  return payload;
 }
 
 function formatLiveFixture(item, events) {
@@ -499,6 +589,21 @@ const server = http.createServer(async (request, response) => {
         standings: [],
         updatedAt: new Date().toISOString(),
         websocket: false,
+      });
+    }
+  }
+
+  if (request.method === "GET" && request.url === "/api/polymarket/world-cup-games") {
+    try {
+      return json(response, 200, await getPolymarketWorldCupGames());
+    } catch (error) {
+      console.error("Polymarket World Cup games failed:", error);
+      return json(response, 502, {
+        error: "盘口数据暂时不可用",
+        games: [],
+        message: "等待开赛",
+        pollIntervalMs: POLYMARKET_CACHE_MS,
+        updatedAt: new Date().toISOString(),
       });
     }
   }
