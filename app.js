@@ -656,14 +656,9 @@ function renderTeams() {
         <a class="market-link" href="${team.marketUrl || POLYMARKET_WORLD_CUP_URL}" target="_blank" rel="noreferrer">
           查看 Polymarket 市场
         </a>
-        <div class="players">
-          ${team.players.map((player) => `
-            <div class="player-card">
-              <strong>${player.name}</strong>
-              <span>${player.position} · ${player.club}</span>
-            </div>
-          `).join("")}
-        </div>
+        <a class="squad-link" href="./team.html?team=${encodeURIComponent(team.code)}">
+          查看完整 ${window.WORLD_CUP_SQUADS?.[team.code]?.length || team.players.length} 人名单
+        </a>
       </article>
     `)
     .join("");

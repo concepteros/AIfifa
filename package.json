@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node --check server.js"
+    "test": "node --check server.js",
+    "sync:squads": "node scripts/sync-wikipedia-squads.js"
   },
   "repository": {
     "type": "git",

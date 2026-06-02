@@ -983,6 +983,21 @@ button {
   text-decoration: underline;
 }
 
+.squad-link {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  margin-top: 2px;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.squad-link:hover {
+  text-decoration: underline;
+}
+
 .players {
   display: grid;
   gap: 8px;
@@ -1172,6 +1187,61 @@ footer a {
 
 .detail-player-row span {
   color: var(--muted);
+}
+
+.squad-details {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfb;
+}
+
+.squad-details summary {
+  padding: 14px;
+  color: var(--green);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.squad-table-wrap {
+  overflow-x: auto;
+  border-top: 1px solid var(--line);
+}
+
+.squad-table {
+  width: 100%;
+  min-width: 680px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.squad-table th,
+.squad-table td {
+  padding: 11px 12px;
+  border-top: 1px solid var(--line);
+  text-align: left;
+}
+
+.squad-table thead th {
+  border-top: 0;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.squad-table td:not(:first-child) {
+  color: var(--muted);
+}
+
+.squad-source {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.squad-source a {
+  color: var(--blue);
+  font-weight: 800;
 }
 
 .player-number {

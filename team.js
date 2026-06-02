@@ -66,6 +66,7 @@ function renderNotFound() {
 function renderTeam(team) {
   const coach = coachFor(team);
   const updates = newsFor(team);
+  const squad = window.WORLD_CUP_SQUADS?.[team.code] || team.players;
   document.title = `${team.name} · 世界杯数据中心`;
   document.querySelector("#teamDetail").innerHTML = `
     <section class="detail-hero">
@@ -84,24 +85,46 @@ function renderTeam(team) {
     </section>
 
     <section class="detail-layout">
-      <article class="panel">
+      <article class="panel squad-panel">
         <div class="section-heading">
           <div>
             <p class="eyebrow">Squad</p>
             <h3>球员信息</h3>
           </div>
-          <span>${team.players.length} 名已录入球员</span>
+          <span>${squad.length} 名已录入球员</span>
         </div>
-        <div class="detail-player-list">
-          ${team.players.map((player, index) => `
-            <div class="detail-player-row">
-              <span class="player-number">${String(index + 1).padStart(2, "0")}</span>
-              <strong>${player.name}</strong>
-              <span>${player.position}</span>
-              <span>${player.club}</span>
-            </div>
-          `).join("")}
-        </div>
+        <details class="squad-details">
+          <summary>展开 ${team.name} 完整球员名单</summary>
+          <div class="squad-table-wrap">
+            <table class="squad-table">
+              <thead>
+                <tr>
+                  <th>姓名</th>
+                  <th>位置</th>
+                  <th>年龄</th>
+                  <th>Caps</th>
+                  <th>Goals</th>
+                  <th>Club</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${squad.map((player) => `
+                  <tr>
+                    <td><strong>${player.name}</strong></td>
+                    <td>${player.position}</td>
+                    <td>${player.age ?? "-"}</td>
+                    <td>${player.caps ?? "-"}</td>
+                    <td>${player.goals ?? "-"}</td>
+                    <td>${player.club}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        </details>
+        <p class="squad-source">
+          阵容来源：<a href="https://en.wikipedia.org/wiki/2026_FIFA_World_Cup_squads" target="_blank" rel="noreferrer">2026 FIFA World Cup squads</a>
+        </p>
       </article>
 
       <aside>
