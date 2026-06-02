@@ -84,6 +84,8 @@ const walletState = {
   accountChangedHandler: null,
   accountsChangedHandler: null,
   authenticationInFlight: false,
+  challenge: null,
+  challengePromise: null,
   paymentCheckInFlight: false,
   paymentPoll: null
 };
@@ -119,6 +121,11 @@ const smartMoneyState = {
   customWallets: loadStoredSmartWallets(),
   enabled: loadSmartMoneyPushSetting(),
   eventSource: null
+};
+
+const accessState = {
+  syncStarted: false,
+  unlocked: false
 };
 
 function normalize(text) {
@@ -377,6 +384,7 @@ function renderWalletState() {
 
 function renderAccessPayment() {
   if (!walletState.address) return;
+  clearWalletChallenge();
   els.accessWalletOptions.hidden = true;
   els.accessSignature.hidden = true;
   els.accessPayment.hidden = false;
@@ -405,20 +413,40 @@ function renderAccessSignature() {
   els.accessPayment.hidden = true;
   els.accessSignatureWalletAddress.textContent = shortAddress(walletState.address);
   setAccessStep("wallet");
-  setAccessMessage("钱包已连接。请在钱包中签名登录消息以验证所有权。");
+  setAccessMessage("钱包已连接。请点击“签名验证钱包”，并在钱包弹窗中确认登录消息。");
+  void prepareWalletChallenge().catch((error) => {
+    console.warn(error);
+    clearWalletChallenge();
+    setAccessMessage(error.message || "登录挑战创建失败，请确认后端服务可用。");
+  });
 }
 
-function unlockAccess(message = "") {
-  stopPaymentPolling();
-  els.accessGate.hidden = true;
-  if (message) setAccessMessage(message);
+function startPremiumDataSync() {
+  void refreshData();
   void refreshLiveFootball();
   void refreshSportsNews();
   connectSmartMoneyStream();
+  if (accessState.syncStarted) return;
+  accessState.syncStarted = true;
+  setInterval(refreshData, 30000);
+  setInterval(refreshLiveFootball, 15000);
+  setInterval(refreshSportsNews, 10 * 60 * 1000);
+}
+
+function unlockAccess(message = "") {
+  clearWalletChallenge();
+  accessState.unlocked = true;
+  stopPaymentPolling();
+  els.accessGate.hidden = true;
+  if (message) setAccessMessage(message);
+  startPremiumDataSync();
 }
 
 function lockAccessGate(message = "请连接已解锁钱包，或连接钱包完成支付。") {
+  accessState.unlocked = false;
   stopPaymentPolling();
+  smartMoneyState.eventSource?.close();
+  smartMoneyState.eventSource = null;
   els.accessGate.hidden = false;
   els.accessWalletOptions.hidden = false;
   els.accessSignature.hidden = true;
@@ -436,6 +464,11 @@ function signatureToBase64(result) {
   return btoa(binary);
 }
 
+function clearWalletChallenge() {
+  walletState.challenge = null;
+  walletState.challengePromise = null;
+}
+
 async function readApiJson(response, fallbackMessage) {
   const contentType = response.headers.get("content-type") || "";
   if (!contentType.includes("application/json")) {
@@ -448,6 +481,45 @@ async function readApiJson(response, fallbackMessage) {
   }
 }
 
+async function prepareWalletChallenge() {
+  if (!walletState.address) throw new Error("请先连接钱包。");
+  const challengeWallet = walletState.address;
+  if (
+    walletState.challenge?.walletAddress === challengeWallet &&
+    Date.now() - walletState.challenge.createdAt < 4 * 60_000
+  ) {
+    return walletState.challenge;
+  }
+  if (walletState.challengePromise) return walletState.challengePromise;
+
+  els.accessSignButton.disabled = true;
+  setAccessMessage("正在准备钱包签名请求...");
+  walletState.challengePromise = (async () => {
+    const challengeResponse = await fetch("/api/auth/challenge", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ walletAddress: challengeWallet })
+    });
+    const challenge = await readApiJson(challengeResponse, "登录挑战创建失败");
+    if (!challengeResponse.ok) throw new Error(challenge.error || "登录挑战创建失败。");
+    if (walletState.address !== challengeWallet) throw new Error("钱包地址已变化，请重新签名。");
+    walletState.challenge = {
+      ...challenge,
+      createdAt: Date.now(),
+      walletAddress: challengeWallet
+    };
+    setAccessMessage("签名请求已准备好。请点击“签名验证钱包”唤起钱包弹窗。");
+    return walletState.challenge;
+  })();
+
+  try {
+    return await walletState.challengePromise;
+  } finally {
+    walletState.challengePromise = null;
+    if (walletState.address === challengeWallet) els.accessSignButton.disabled = false;
+  }
+}
+
 async function authenticateConnectedWallet() {
   if (walletState.authenticationInFlight) return;
   if (!walletState.provider?.signMessage || !walletState.address) {
@@ -457,16 +529,11 @@ async function authenticateConnectedWallet() {
   els.accessSignButton.disabled = true;
   setAccessMessage("请在钱包中签名登录消息。本操作不会发起交易。");
   try {
-    const challengeResponse = await fetch("/api/auth/challenge", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ walletAddress: walletState.address })
-    });
-    const challenge = await readApiJson(challengeResponse, "登录挑战创建失败");
-    if (!challengeResponse.ok) throw new Error(challenge.error || "登录挑战创建失败。");
+    const challenge = await prepareWalletChallenge();
     const signature = signatureToBase64(
       await walletState.provider.signMessage(new TextEncoder().encode(challenge.message), "utf8")
     );
+    clearWalletChallenge();
     const loginResponse = await fetch("/api/auth/wallet-login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -602,18 +669,13 @@ function bindWalletAccountEvents() {
   walletState.accountChangedHandler = async (publicKey) => {
     const address = publicKey?.toString?.() || "";
     if (address === walletState.address) return;
+    clearWalletChallenge();
     walletState.address = address;
     renderWalletState();
     lockAccessGate("钱包账户已切换，请重新验证。");
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
     if (!address) return;
     renderAccessSignature();
-    try {
-      await authenticateConnectedWallet();
-    } catch (error) {
-      console.warn(error);
-      setAccessMessage(error.message || "钱包签名验证失败，请重试。");
-    }
   };
   walletState.accountsChangedHandler = (accounts) => {
     const address = Array.isArray(accounts) ? accounts[0] || "" : "";
@@ -667,10 +729,8 @@ async function connectWallet(wallet) {
     if (walletState.address) {
       bindWalletAccountEvents();
       renderWalletState();
-      setWalletMessage("钱包已连接。");
+      setWalletMessage("钱包已连接，请点击签名验证。");
       renderAccessSignature();
-      await new Promise((resolve) => setTimeout(resolve, 250));
-      await authenticateConnectedWallet();
     }
   } catch (error) {
     console.warn(error);
@@ -752,6 +812,7 @@ async function disconnectWallet() {
   walletState.provider = null;
   walletState.address = "";
   walletState.name = "";
+  clearWalletChallenge();
   void fetch("/api/auth/logout", { method: "POST" });
   renderWalletState();
   setWalletMessage("钱包已断开。");
@@ -952,6 +1013,7 @@ function renderStandings(payload) {
 }
 
 async function refreshLiveFootball() {
+  if (!accessState.unlocked) return;
   try {
     const response = await fetch("/api/football/live-matches", {
       headers: { Accept: "application/json" }
@@ -990,6 +1052,7 @@ function renderSportsNews(payload) {
 }
 
 async function refreshSportsNews() {
+  if (!accessState.unlocked) return;
   try {
     const response = await fetch("/api/news/sports", { headers: { Accept: "application/json" } });
     const payload = await response.json();
@@ -1078,6 +1141,10 @@ function smartMoneyStreamUrl() {
 function connectSmartMoneyStream() {
   smartMoneyState.eventSource?.close();
   smartMoneyState.eventSource = null;
+  if (!accessState.unlocked) {
+    els.smartMoneyUpdatedAt.textContent = "解锁后开启";
+    return;
+  }
   if (!smartMoneyState.enabled) {
     els.smartMoneyUpdatedAt.textContent = "推送已关闭";
     return;
@@ -1128,7 +1195,6 @@ function setupSmartMoney() {
     renderSmartMoneyCustomWallets();
     connectSmartMoneyStream();
   });
-  connectSmartMoneyStream();
 }
 
 function renderHistory() {
@@ -1186,6 +1252,7 @@ function setRefreshLabel(text) {
 }
 
 async function refreshData() {
+  if (!accessState.unlocked) return;
   setRefreshLabel("正在更新实时数据...");
   try {
     const markets = await fetchPolymarketMarkets();
@@ -1207,11 +1274,5 @@ async function refreshData() {
 
 setupFilters();
 setupWallet();
-render();
-refreshData();
-setInterval(refreshData, 30000);
-refreshLiveFootball();
-setInterval(refreshLiveFootball, 15000);
 setupSmartMoney();
-refreshSportsNews();
-setInterval(refreshSportsNews, 10 * 60 * 1000);
+render();
