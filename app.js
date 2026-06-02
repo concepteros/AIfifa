@@ -641,7 +641,10 @@ function renderTeams() {
       <article class="team-card">
         <div class="team-name">
           <a class="team-detail-link" href="./team.html?team=${encodeURIComponent(team.code)}">
-            <strong>${team.name}</strong>
+            <strong class="team-title">
+              ${team.flag ? `<img class="team-flag" src="${team.flag}" alt="" />` : ""}
+              <span>${team.name}</span>
+            </strong>
           </a>
           <span>${team.code} · 小组 ${team.group}</span>
         </div>

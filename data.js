@@ -96,3 +96,72 @@ window.WORLD_CUP_DATA = {
     { name: "Luka Modric", team: "Croatia", years: "2006, 2014, 2018, 2022", role: "Midfielder", note: "2018 Golden Ball, finalist." }
   ]
 };
+
+const WORLD_CUP_TEAM_SOURCE = [
+  ["MEX", "1", "MX", "Mexico"],
+  ["RSA", "2", "ZA", "South Africa"],
+  ["KOR", "3", "KR", "South Korea"],
+  ["CZE", "4", "CZ", "Czech Republic"],
+  ["CAN", "5", "CA", "Canada"],
+  ["BIH", "6", "BA", "Bosnia and Herzegovina"],
+  ["QAT", "7", "QA", "Qatar"],
+  ["SUI", "8", "CH", "Switzerland"],
+  ["BRA", "9", "BR", "Brazil"],
+  ["MAR", "10", "MA", "Morocco"],
+  ["HAI", "11", "HT", "Haiti"],
+  ["SCO", "12", "gb-sct", "Scotland"],
+  ["USA", "13", "US", "United States"],
+  ["PAR", "14", "PY", "Paraguay"],
+  ["AUS", "15", "AU", "Australia"],
+  ["TUR", "16", "TR", "Turkey"],
+  ["GER", "17", "DE", "Germany"],
+  ["CUW", "18", "CW", "Curacao"],
+  ["CIV", "19", "CI", "Ivory Coast"],
+  ["ECU", "20", "EC", "Ecuador"],
+  ["NED", "21", "NL", "Netherlands"],
+  ["JPN", "22", "JP", "Japan"],
+  ["SWE", "23", "SE", "Sweden"],
+  ["TUN", "24", "TN", "Tunisia"],
+  ["BEL", "25", "BE", "Belgium"],
+  ["EGY", "26", "EG", "Egypt"],
+  ["IRN", "27", "IR", "Iran"],
+  ["NZL", "28", "NZ", "New Zealand"],
+  ["ESP", "29", "ES", "Spain"],
+  ["CPV", "30", "CV", "Cape Verde"],
+  ["KSA", "31", "SA", "Saudi Arabia"],
+  ["URU", "32", "UY", "Uruguay"],
+  ["FRA", "33", "FR", "France"],
+  ["SEN", "34", "SN", "Senegal"],
+  ["IRQ", "35", "IQ", "Iraq"],
+  ["NOR", "36", "NO", "Norway"],
+  ["ARG", "37", "AR", "Argentina"],
+  ["ALG", "38", "DZ", "Algeria"],
+  ["AUT", "39", "AT", "Austria"],
+  ["JOR", "40", "JO", "Jordan"],
+  ["POR", "41", "PT", "Portugal"],
+  ["COD", "42", "CD", "Democratic Republic of the Congo"],
+  ["UZB", "43", "UZ", "Uzbekistan"],
+  ["COL", "44", "CO", "Colombia"],
+  ["ENG", "45", "gb-eng", "England"],
+  ["CRO", "46", "HR", "Croatia"],
+  ["GHA", "47", "GH", "Ghana"],
+  ["PAN", "48", "PA", "Panama"]
+];
+
+const WORLD_CUP_TEAM_SOURCE_BY_CODE = new Map(
+  WORLD_CUP_TEAM_SOURCE.map(([code, sourceId, iso2, sourceName]) => [
+    code,
+    { iso2, sourceId, sourceName }
+  ])
+);
+
+window.WORLD_CUP_DATA.teams = window.WORLD_CUP_DATA.teams.map((team) => {
+  const source = WORLD_CUP_TEAM_SOURCE_BY_CODE.get(team.code);
+  if (!source) return team;
+  return {
+    ...team,
+    ...source,
+    flag: `https://flagcdn.com/w80/${source.iso2.toLowerCase()}.png`,
+    sourceRepository: "https://github.com/rezarahiminia/worldcup2026"
+  };
+});

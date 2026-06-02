@@ -604,6 +604,20 @@ button {
   text-decoration: underline;
 }
 
+.team-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.team-flag {
+  width: 24px;
+  height: 17px;
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  object-fit: cover;
+}
+
 .team-name span {
   color: var(--muted);
   font-size: 13px;
@@ -1093,6 +1107,23 @@ footer a {
   margin: 8px 0 12px;
 }
 
+.detail-team-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.detail-team-title img {
+  width: 72px;
+  max-height: 52px;
+  border: 2px solid rgba(255, 255, 255, 0.34);
+  object-fit: cover;
+}
+
+.detail-team-title h2 {
+  margin: 8px 0 12px;
+}
+
 .detail-hero p:last-child {
   color: rgba(255, 255, 255, 0.76);
 }
@@ -1171,6 +1202,11 @@ footer a {
 
 .profile-list span {
   color: var(--muted);
+}
+
+.profile-list a {
+  color: var(--blue);
+  font-weight: 800;
 }
 
 .news-item {

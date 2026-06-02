@@ -71,7 +71,10 @@ function renderTeam(team) {
     <section class="detail-hero">
       <div>
         <p class="eyebrow">${team.code} · Group ${team.group} · ${team.confederation}</p>
-        <h2>${team.name}</h2>
+        <div class="detail-team-title">
+          ${team.flag ? `<img src="${team.flag}" alt="${team.name} flag" />` : ""}
+          <h2>${team.name}</h2>
+        </div>
         <p>${team.form} · 本届夺冠隐含胜率 ${team.probability.toFixed(1)}%</p>
       </div>
       <div class="detail-odds">
@@ -112,9 +115,11 @@ function renderTeam(team) {
           <p class="eyebrow">Team Profile</p>
           <div class="profile-list">
             <div><span>代码</span><strong>${team.code}</strong></div>
+            <div><span>国家代码</span><strong>${team.iso2 || "-"}</strong></div>
             <div><span>赛区</span><strong>${team.confederation}</strong></div>
             <div><span>小组</span><strong>${team.group}</strong></div>
             <div><span>风格</span><strong>${team.form}</strong></div>
+            <div><span>公开数据</span><a href="${team.sourceRepository || "https://github.com/rezarahiminia/worldcup2026"}" target="_blank" rel="noreferrer">worldcup2026</a></div>
           </div>
         </article>
       </aside>

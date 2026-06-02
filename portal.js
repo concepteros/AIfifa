@@ -101,7 +101,10 @@ function renderGroups() {
       <h3>小组 ${group}</h3>
       ${teams.map((team) => `
         <a href="./team.html?team=${encodeURIComponent(team.code)}">
-          <strong>${team.name}</strong>
+          <strong class="team-title">
+            ${team.flag ? `<img class="team-flag" src="${team.flag}" alt="" />` : ""}
+            <span>${team.name}</span>
+          </strong>
           <span>${team.code}</span>
         </a>
       `).join("")}
