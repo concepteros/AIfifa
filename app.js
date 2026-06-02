@@ -412,6 +412,9 @@ function unlockAccess(message = "") {
   stopPaymentPolling();
   els.accessGate.hidden = true;
   if (message) setAccessMessage(message);
+  void refreshLiveFootball();
+  void refreshSportsNews();
+  connectSmartMoneyStream();
 }
 
 function lockAccessGate(message = "请连接已解锁钱包，或连接钱包完成支付。") {
@@ -433,6 +436,18 @@ function signatureToBase64(result) {
   return btoa(binary);
 }
 
+async function readApiJson(response, fallbackMessage) {
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.includes("application/json")) {
+    throw new Error(`${fallbackMessage}：后端接口未返回 JSON。请确认 Node 服务已部署并正确代理 /api 请求。`);
+  }
+  try {
+    return await response.json();
+  } catch {
+    throw new Error(`${fallbackMessage}：后端返回了无效 JSON。`);
+  }
+}
+
 async function authenticateConnectedWallet() {
   if (walletState.authenticationInFlight) return;
   if (!walletState.provider?.signMessage || !walletState.address) {
@@ -447,7 +462,7 @@ async function authenticateConnectedWallet() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ walletAddress: walletState.address })
     });
-    const challenge = await challengeResponse.json();
+    const challenge = await readApiJson(challengeResponse, "登录挑战创建失败");
     if (!challengeResponse.ok) throw new Error(challenge.error || "登录挑战创建失败。");
     const signature = signatureToBase64(
       await walletState.provider.signMessage(new TextEncoder().encode(challenge.message), "utf8")
@@ -461,7 +476,7 @@ async function authenticateConnectedWallet() {
         walletAddress: walletState.address
       })
     });
-    const login = await loginResponse.json();
+    const login = await readApiJson(loginResponse, "钱包签名验证失败");
     if (!loginResponse.ok) throw new Error(login.error || "钱包签名验证失败。");
     if (login.authorized) {
       unlockAccess(login.developerMode ? "开发者模式已启用。" : "高级权限已恢复。");
@@ -693,7 +708,7 @@ async function checkPremiumAccess() {
         walletAddress: walletState.address
       })
     });
-    const payload = await response.json().catch(() => ({}));
+    const payload = await readApiJson(response, "支付状态检查失败");
     if (!response.ok) {
       throw new Error(payload.error || "支付状态检查失败。");
     }
@@ -746,7 +761,7 @@ async function disconnectWallet() {
 async function restoreAuthorizedSession() {
   try {
     const response = await fetch("/api/auth/session", { headers: { Accept: "application/json" } });
-    const session = await response.json();
+    const session = await readApiJson(response, "会话状态检查失败");
     if (response.ok && session.authorized) {
       unlockAccess(session.mode === "developer" ? "开发者模式已恢复。" : "高级权限已恢复。");
     }

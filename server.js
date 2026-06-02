@@ -1134,6 +1134,7 @@ async function serveStatic(request, response) {
   try {
     const body = await fs.readFile(filePath);
     response.writeHead(200, {
+      "Cache-Control": "no-cache",
       "Content-Type": MIME_TYPES[path.extname(filePath)] || "application/octet-stream",
       "X-Content-Type-Options": "nosniff",
     });
@@ -1168,6 +1169,14 @@ const server = http.createServer(async (request, response) => {
 
   if (request.method === "POST" && request.url === "/api/auth/logout") {
     return logoutWallet(response);
+  }
+
+  if (
+    request.url.startsWith("/api/") &&
+    !request.url.startsWith("/api/payments/") &&
+    !isAuthorizedSession(sessionFromRequest(request))
+  ) {
+    return json(response, 401, { error: "Premium wallet session required" });
   }
 
   if (request.method === "GET" && request.url === "/api/football/live-matches") {
@@ -1242,6 +1251,10 @@ const server = http.createServer(async (request, response) => {
 
   if ((request.method === "GET" || request.method === "POST") && request.url.startsWith("/api/predictions")) {
     return handlePredictions(request, response);
+  }
+
+  if (request.url.startsWith("/api/")) {
+    return json(response, 404, { error: "API endpoint not found" });
   }
 
   if (request.method !== "GET") {
