@@ -1,17 +1,12 @@
 const POLYMARKET_BASE_URL = "https://gamma-api.polymarket.com";
 const POLYMARKET_WORLD_CUP_URL = "https://polymarket.com/zh/sports/world-cup/games";
 const DEFAULT_POLYMARKET_QUERY = "2026 world cup winner";
-const ACCESS_SESSION_KEY = "fifa2026AccessSession";
 const SOLANA_USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 const SOLANA_USDC_RECIPIENT = "EwAh2VbsbgG2xWsFsDYMjmCUqq48cSkms1HATZDi3Vgq";
 const PREMIUM_PRICE_UNITS = 19_900_000n;
 const SOLANA_RPC_URL = "https://api.mainnet-beta.solana.com";
 const TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 const ASSOCIATED_TOKEN_PROGRAM_ID = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
-const DEVELOPER_WALLETS = new Set([
-  "EwAh2VbsbgG2xWsFsDYMjmCUqq48cSkms1HATZDi3Vgq"
-]);
-
 const TEAM_ALIASES = {
   "United States": ["usa", "u.s.", "usmnt", "united states", "america"],
   "Korea Republic": ["south korea", "korea republic", "korea"],
@@ -376,7 +371,6 @@ function renderWalletState() {
 
 function renderAccessPayment() {
   if (!walletState.address) return;
-  if (unlockDeveloperWallet()) return;
   els.accessWalletOptions.hidden = true;
   els.accessPayment.hidden = false;
   els.accessWalletAddress.textContent = shortAddress(walletState.address);
@@ -396,29 +390,14 @@ function renderAccessPayment() {
   void checkPremiumAccess();
 }
 
-function setAccessSession(mode) {
-  try {
-    sessionStorage.setItem(ACCESS_SESSION_KEY, JSON.stringify({
-      mode,
-      verifiedAt: new Date().toISOString(),
-      walletAddress: walletState.address
-    }));
-  } catch {
-    // The current page stays unlocked even when browser session storage is unavailable.
-  }
-}
-
-function clearAccessSession() {
-  try {
-    sessionStorage.removeItem(ACCESS_SESSION_KEY);
-  } catch {
-    // No stored session exists when browser storage is unavailable.
-  }
+function unlockAccess(message = "") {
+  stopPaymentPolling();
+  els.accessGate.hidden = true;
+  if (message) setAccessMessage(message);
 }
 
 function lockAccessGate(message = "请连接已解锁钱包，或连接钱包完成支付。") {
   stopPaymentPolling();
-  clearAccessSession();
   els.accessGate.hidden = false;
   els.accessWalletOptions.hidden = false;
   els.accessPayment.hidden = true;
@@ -426,13 +405,46 @@ function lockAccessGate(message = "请连接已解锁钱包，或连接钱包完
   setAccessMessage(message);
 }
 
-function unlockDeveloperWallet() {
-  if (!DEVELOPER_WALLETS.has(walletState.address)) return false;
-  setAccessSession("developer");
-  stopPaymentPolling();
-  els.accessGate.hidden = true;
-  setAccessMessage("开发者模式已启用。");
-  return true;
+function signatureToBase64(result) {
+  const signature = result?.signature || result;
+  if (typeof signature === "string") return signature;
+  const bytes = signature instanceof Uint8Array ? signature : new Uint8Array(signature || []);
+  let binary = "";
+  bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+  return btoa(binary);
+}
+
+async function authenticateConnectedWallet() {
+  if (!walletState.provider?.signMessage || !walletState.address) {
+    throw new Error("当前钱包不支持消息签名，无法验证钱包所有权。");
+  }
+  setAccessMessage("请在钱包中签名登录消息。本操作不会发起交易。");
+  const challengeResponse = await fetch("/api/auth/challenge", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ walletAddress: walletState.address })
+  });
+  const challenge = await challengeResponse.json();
+  if (!challengeResponse.ok) throw new Error(challenge.error || "登录挑战创建失败。");
+  const signature = signatureToBase64(
+    await walletState.provider.signMessage(new TextEncoder().encode(challenge.message), "utf8")
+  );
+  const loginResponse = await fetch("/api/auth/wallet-login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      challengeId: challenge.challengeId,
+      signature,
+      walletAddress: walletState.address
+    })
+  });
+  const login = await loginResponse.json();
+  if (!loginResponse.ok) throw new Error(login.error || "钱包签名验证失败。");
+  if (login.authorized) {
+    unlockAccess(login.developerMode ? "开发者模式已启用。" : "高级权限已恢复。");
+    return;
+  }
+  renderAccessPayment();
 }
 
 function associatedTokenAddress(owner, mint) {
@@ -545,13 +557,20 @@ function solanaAddress(result, provider) {
 function bindWalletAccountEvents() {
   if (!walletState.provider?.on) return;
   unbindWalletAccountEvents();
-  walletState.accountChangedHandler = (publicKey) => {
+  walletState.accountChangedHandler = async (publicKey) => {
     const address = publicKey?.toString?.() || "";
     if (address === walletState.address) return;
     walletState.address = address;
     renderWalletState();
     lockAccessGate("钱包账户已切换，请重新验证。");
-    if (address) renderAccessPayment();
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    if (!address) return;
+    try {
+      await authenticateConnectedWallet();
+    } catch (error) {
+      console.warn(error);
+      setAccessMessage(error.message || "钱包签名验证失败，请重试。");
+    }
   };
   walletState.accountsChangedHandler = (accounts) => {
     const address = Array.isArray(accounts) ? accounts[0] || "" : "";
@@ -606,7 +625,7 @@ async function connectWallet(wallet) {
       bindWalletAccountEvents();
       renderWalletState();
       setWalletMessage("钱包已连接。");
-      renderAccessPayment();
+      await authenticateConnectedWallet();
     }
   } catch (error) {
     console.warn(error);
@@ -649,12 +668,7 @@ async function checkPremiumAccess() {
     }
     if (checkedWallet !== walletState.address) return;
 
-    if (payload.developerMode) {
-      setAccessMessage("开发者模式已启用。");
-    }
-    setAccessSession(payload.developerMode ? "developer" : "premium");
-    stopPaymentPolling();
-    els.accessGate.hidden = true;
+    unlockAccess(payload.developerMode ? "开发者模式已启用。" : "支付已确认，高级权限已解锁。");
   } catch (error) {
     console.warn(error);
     setAccessMessage(error.message || "支付状态检查失败，请稍后重试。");
@@ -687,9 +701,22 @@ async function disconnectWallet() {
   walletState.provider = null;
   walletState.address = "";
   walletState.name = "";
+  void fetch("/api/auth/logout", { method: "POST" });
   renderWalletState();
   setWalletMessage("钱包已断开。");
   lockAccessGate();
+}
+
+async function restoreAuthorizedSession() {
+  try {
+    const response = await fetch("/api/auth/session", { headers: { Accept: "application/json" } });
+    const session = await response.json();
+    if (response.ok && session.authorized) {
+      unlockAccess(session.mode === "developer" ? "开发者模式已恢复。" : "高级权限已恢复。");
+    }
+  } catch (error) {
+    console.warn(error);
+  }
 }
 
 function setupWallet() {
@@ -711,6 +738,7 @@ function setupWallet() {
   });
   lockAccessGate();
   renderWalletState();
+  void restoreAuthorizedSession();
 }
 
 function filteredTeams() {
