@@ -135,7 +135,11 @@ function isWinnerMarket(market) {
 }
 
 function marketUrl(market) {
-  return market.slug ? `https://polymarket.com/event/${market.slug}` : "https://polymarket.com";
+  if (!market.eventSlug || !market.slug) return POLYMARKET_WORLD_CUP_URL;
+  const url = new URL(`/event/${market.eventSlug}`, "https://polymarket.com");
+  url.searchParams.set("marketSlug", market.slug);
+  url.searchParams.set("outcomeIndex", "0");
+  return url.toString();
 }
 
 function flattenMarkets(searchPayload) {
