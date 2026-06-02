@@ -121,9 +121,16 @@ body {
   color: var(--muted);
 }
 
-.access-payment {
+.access-payment,
+.access-signature {
   display: grid;
   gap: 12px;
+}
+
+.access-signature > small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .access-wallet-summary {
@@ -157,6 +164,11 @@ body {
 .access-pay-button.disabled {
   pointer-events: none;
   opacity: 0.5;
+}
+
+.access-pay-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
 .access-verify-button {
