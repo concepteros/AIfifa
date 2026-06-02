@@ -119,6 +119,29 @@
     </header>
 
     <main>
+      <nav class="feature-nav" aria-label="赛事专区">
+        <a class="feature-nav-item groups" href="./groups.html">
+          <span>01</span>
+          <strong>小组赛</strong>
+          <small>即时情况与对战图</small>
+        </a>
+        <a class="feature-nav-item semifinals" href="./semifinals.html">
+          <span>02</span>
+          <strong>半决赛</strong>
+          <small>赛程暂未开放</small>
+        </a>
+        <a class="feature-nav-item mvp" href="./mvp-history.html">
+          <span>03</span>
+          <strong>MVP 球员</strong>
+          <small>历届最有价值球员</small>
+        </a>
+        <a class="feature-nav-item predictions" href="./predictions.html">
+          <span>04</span>
+          <strong>你的预测</strong>
+          <small>参与冠军投票</small>
+        </a>
+      </nav>
+
       <section class="hero">
         <div class="hero-copy">
           <p class="eyebrow">冠军胜率 · 球员库 · MVP · 历史阵容</p>
@@ -186,6 +209,28 @@
           </div>
           <div id="mvpList" class="mvp-list"></div>
         </article>
+      </section>
+
+      <section class="panel live-football-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">API-Football Live</p>
+            <h3>世界杯实时比分</h3>
+          </div>
+          <span id="footballUpdatedAt">正在连接赛事数据...</span>
+        </div>
+        <div class="live-football-layout">
+          <div>
+            <div id="liveMatchList" class="live-match-list"></div>
+          </div>
+          <aside>
+            <div class="live-side-heading">
+              <strong>小组积分榜</strong>
+              <span>15 秒轮询</span>
+            </div>
+            <div id="standingsList" class="standings-list"></div>
+          </aside>
+        </div>
       </section>
 
       <section class="panel bracket-panel">

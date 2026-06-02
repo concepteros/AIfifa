@@ -1,4 +1,5 @@
 const POLYMARKET_BASE_URL = "https://gamma-api.polymarket.com";
+const POLYMARKET_WORLD_CUP_URL = "https://polymarket.com/zh/sports/world-cup/games";
 const DEFAULT_POLYMARKET_QUERY = "2026 world cup winner";
 const ACCESS_UNLOCK_KEY = "fifa2026PremiumUnlocked";
 const SOLANA_USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
@@ -46,6 +47,9 @@ const els = {
   historyContent: document.querySelector("#historyContent"),
   bracketGrid: document.querySelector("#bracketGrid"),
   bracketUpdatedAt: document.querySelector("#bracketUpdatedAt"),
+  liveMatchList: document.querySelector("#liveMatchList"),
+  standingsList: document.querySelector("#standingsList"),
+  footballUpdatedAt: document.querySelector("#footballUpdatedAt"),
   updatedAt: document.querySelector("#updatedAt"),
   refreshButton: document.querySelector("#refreshButton"),
   refreshState: document.querySelector("#refreshState"),
@@ -117,13 +121,17 @@ function aliasesFor(team) {
 }
 
 function teamMentioned(text, team) {
-  const source = normalize(text);
-  return aliasesFor(team).some((alias) => alias && source.includes(alias));
+  const source = ` ${normalize(text)} `;
+  return aliasesFor(team).some((alias) => alias && source.includes(` ${alias} `));
 }
 
 function isWinnerMarket(market) {
   const text = normalize([market.question, market.title, market.slug, market.description].join(" "));
-  return text.includes("world cup") && (text.includes("winner") || text.includes("win") || text.includes("champion"));
+  return (
+    text.includes("world cup") &&
+    !text.includes(" group ") &&
+    (text.includes("winner") || text.includes("win") || text.includes("champion"))
+  );
 }
 
 function marketUrl(market) {
@@ -642,11 +650,9 @@ function renderTeams() {
           <span>${team.probability.toFixed(1)}%</span>
           <span>${team.form}</span>
         </div>
-        ${team.marketUrl ? `
-          <a class="market-link" href="${team.marketUrl}" target="_blank" rel="noreferrer">
-            查看 Polymarket 市场
-          </a>
-        ` : ""}
+        <a class="market-link" href="${team.marketUrl || POLYMARKET_WORLD_CUP_URL}" target="_blank" rel="noreferrer">
+          查看 Polymarket 市场
+        </a>
         <div class="players">
           ${team.players.map((player) => `
             <div class="player-card">
@@ -713,6 +719,98 @@ function renderBracket() {
       </div>
     </section>
   `).join("");
+}
+
+function renderMatchEvents(events) {
+  if (!events.length) return '<p class="live-empty-detail">暂无关键事件</p>';
+  return `
+    <div class="live-events">
+      ${events.slice(-5).reverse().map((event) => `
+        <div>
+          <strong>${event.time ?? "-"}'</strong>
+          <span>${event.team} · ${event.type}${event.detail ? ` · ${event.detail}` : ""}</span>
+          <small>${event.player || ""}</small>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderLiveMatches(payload) {
+  if (!els.liveMatchList) return;
+  els.footballUpdatedAt.textContent = payload.configured
+    ? `更新：${formatDate(payload.updatedAt)}`
+    : "等待 API_FOOTBALL_KEY";
+
+  if (!payload.liveMatches.length) {
+    els.liveMatchList.innerHTML = `
+      <div class="live-empty">
+        <strong>${payload.configured ? "当前暂无进行中的世界杯比赛" : "赛事 API 尚未配置"}</strong>
+        <span>${payload.configured ? "比赛开始后将每 15 秒自动刷新比分和事件。" : "在后端环境变量中设置 API_FOOTBALL_KEY 后即可接入实时比分。"}</span>
+      </div>
+    `;
+    return;
+  }
+
+  els.liveMatchList.innerHTML = payload.liveMatches.map((match) => `
+    <article class="live-match-card">
+      <div class="live-match-meta">
+        <span class="live-badge">${match.status} · ${match.elapsed ?? "-"}'</span>
+        <span>${match.round}${match.venue ? ` · ${match.venue}` : ""}</span>
+      </div>
+      <div class="live-score">
+        <div><strong>${match.home.name}</strong><span>主队</span></div>
+        <b>${match.home.score ?? 0} - ${match.away.score ?? 0}</b>
+        <div><strong>${match.away.name}</strong><span>客队</span></div>
+      </div>
+      ${renderMatchEvents(match.events)}
+    </article>
+  `).join("");
+}
+
+function renderStandings(payload) {
+  if (!els.standingsList) return;
+  if (!payload.standings.length) {
+    els.standingsList.innerHTML = `
+      <p class="live-empty-detail">
+        ${payload.standingsError || "积分榜将在赛事 API 接入后显示。"}
+      </p>
+    `;
+    return;
+  }
+
+  els.standingsList.innerHTML = payload.standings.map((group) => `
+    <section class="standing-group">
+      <h4>${group[0]?.group || "Group"}</h4>
+      ${group.map((row) => `
+        <div class="standing-row">
+          <span>${row.rank}</span>
+          <strong>${row.team.name}</strong>
+          <b>${row.points}</b>
+        </div>
+      `).join("")}
+    </section>
+  `).join("");
+}
+
+async function refreshLiveFootball() {
+  try {
+    const response = await fetch("/api/football/live-matches", {
+      headers: { Accept: "application/json" }
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || "赛事 API 请求失败");
+    renderLiveMatches(payload);
+    renderStandings(payload);
+  } catch (error) {
+    console.warn(error);
+    renderLiveMatches({
+      configured: false,
+      liveMatches: [],
+      updatedAt: new Date().toISOString()
+    });
+    renderStandings({ standings: [] });
+  }
 }
 
 function renderHistory() {
@@ -795,3 +893,5 @@ setupWallet();
 render();
 refreshData();
 setInterval(refreshData, 30000);
+refreshLiveFootball();
+setInterval(refreshLiveFootball, 15000);

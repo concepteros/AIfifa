@@ -1,2 +1,4 @@
 node_modules/
 data/payments.json
+data/predictions.json
+.env

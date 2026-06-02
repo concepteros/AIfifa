@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>你的预测 | FIFA World Cup 2026</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body data-portal-page="predictions">
+    <header class="portal-topbar">
+      <a class="back-link" href="./index.html">返回主页面</a>
+      <div>
+        <p class="eyebrow">FIFA World Cup 2026</p>
+        <h1>你的预测</h1>
+      </div>
+    </header>
+    <main class="portal-main">
+      <section class="portal-intro">
+        <p class="eyebrow">Community Vote</p>
+        <h2>谁会捧起大力神杯？</h2>
+        <p>选择一支球队参与冠军投票。你可以随时修改预测，结果会即时更新。</p>
+      </section>
+      <section class="panel prediction-layout">
+        <div>
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Ballot</p>
+              <h3>选择你的冠军</h3>
+            </div>
+          </div>
+          <form id="predictionForm" class="prediction-form">
+            <label>
+              <span>参赛队伍</span>
+              <select id="predictionTeam" required></select>
+            </label>
+            <button type="submit">提交预测</button>
+          </form>
+          <p id="predictionMessage" class="prediction-message" aria-live="polite"></p>
+        </div>
+        <div>
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Live Results</p>
+              <h3>球迷投票</h3>
+            </div>
+            <span id="predictionTotal">0 票</span>
+          </div>
+          <div id="predictionResults" class="prediction-results"></div>
+        </div>
+      </section>
+    </main>
+    <script src="./data.js"></script>
+    <script src="./portal.js"></script>
+  </body>
+</html>
