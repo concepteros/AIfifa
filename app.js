@@ -1,7 +1,7 @@
 const POLYMARKET_BASE_URL = "https://gamma-api.polymarket.com";
 const POLYMARKET_WORLD_CUP_URL = "https://polymarket.com/zh/sports/world-cup/games";
 const DEFAULT_POLYMARKET_QUERY = "2026 world cup winner";
-const ACCESS_UNLOCK_KEY = "fifa2026PremiumUnlocked";
+const ACCESS_SESSION_KEY = "fifa2026AccessSession";
 const SOLANA_USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 const SOLANA_USDC_RECIPIENT = "EwAh2VbsbgG2xWsFsDYMjmCUqq48cSkms1HATZDi3Vgq";
 const PREMIUM_PRICE_USDC = "19.9";
@@ -84,6 +84,8 @@ const walletState = {
   provider: null,
   address: "",
   name: "",
+  accountChangedHandler: null,
+  accountsChangedHandler: null,
   paymentPoll: null
 };
 
@@ -396,9 +398,39 @@ function renderAccessPayment() {
   void checkPremiumAccess();
 }
 
+function setAccessSession(mode) {
+  try {
+    sessionStorage.setItem(ACCESS_SESSION_KEY, JSON.stringify({
+      mode,
+      verifiedAt: new Date().toISOString(),
+      walletAddress: walletState.address
+    }));
+  } catch {
+    // The current page stays unlocked even when browser session storage is unavailable.
+  }
+}
+
+function clearAccessSession() {
+  try {
+    sessionStorage.removeItem(ACCESS_SESSION_KEY);
+  } catch {
+    // No stored session exists when browser storage is unavailable.
+  }
+}
+
+function lockAccessGate(message = "请连接已解锁钱包，或连接钱包完成支付。") {
+  stopPaymentPolling();
+  clearAccessSession();
+  els.accessGate.hidden = false;
+  els.accessWalletOptions.hidden = false;
+  els.accessPayment.hidden = true;
+  setAccessStep("wallet");
+  setAccessMessage(message);
+}
+
 function unlockDeveloperWallet() {
   if (!DEVELOPER_WALLETS.has(walletState.address)) return false;
-  localStorage.setItem(ACCESS_UNLOCK_KEY, "developer");
+  setAccessSession("developer");
   stopPaymentPolling();
   els.accessGate.hidden = true;
   setAccessMessage("开发者模式已启用。");
@@ -512,6 +544,36 @@ function solanaAddress(result, provider) {
   return result?.publicKey?.toString?.() || provider?.publicKey?.toString?.() || "";
 }
 
+function bindWalletAccountEvents() {
+  if (!walletState.provider?.on) return;
+  walletState.accountChangedHandler = (publicKey) => {
+    const address = publicKey?.toString?.() || "";
+    if (address === walletState.address) return;
+    walletState.address = address;
+    renderWalletState();
+    lockAccessGate("钱包账户已切换，请重新验证。");
+    if (address) renderAccessPayment();
+  };
+  walletState.accountsChangedHandler = (accounts) => {
+    const address = Array.isArray(accounts) ? accounts[0] || "" : "";
+    walletState.accountChangedHandler(address);
+  };
+  walletState.provider.on("accountChanged", walletState.accountChangedHandler);
+  walletState.provider.on("accountsChanged", walletState.accountsChangedHandler);
+}
+
+function unbindWalletAccountEvents() {
+  if (!walletState.provider?.removeListener) return;
+  if (walletState.accountChangedHandler) {
+    walletState.provider.removeListener("accountChanged", walletState.accountChangedHandler);
+  }
+  if (walletState.accountsChangedHandler) {
+    walletState.provider.removeListener("accountsChanged", walletState.accountsChangedHandler);
+  }
+  walletState.accountChangedHandler = null;
+  walletState.accountsChangedHandler = null;
+}
+
 async function connectPhantom() {
   const provider = window.phantom?.solana;
   if (!provider?.isPhantom) {
@@ -543,6 +605,7 @@ async function connectWallet(wallet) {
     if (wallet === "okx-solana") await connectOkxSolana();
 
     if (walletState.address) {
+      bindWalletAccountEvents();
       renderWalletState();
       setWalletMessage("钱包已连接。");
       renderAccessPayment();
@@ -584,10 +647,10 @@ async function checkPremiumAccess() {
       return;
     }
 
-    localStorage.setItem(ACCESS_UNLOCK_KEY, payload.developerMode ? "developer" : "true");
     if (payload.developerMode) {
       setAccessMessage("开发者模式已启用。");
     }
+    setAccessSession(payload.developerMode ? "developer" : "premium");
     stopPaymentPolling();
     els.accessGate.hidden = true;
   } catch (error) {
@@ -613,6 +676,7 @@ function startPaymentPolling() {
 async function disconnectWallet() {
   stopPaymentPolling();
   try {
+    unbindWalletAccountEvents();
     if (walletState.provider?.disconnect) await walletState.provider.disconnect();
   } catch (error) {
     console.warn(error);
@@ -622,6 +686,7 @@ async function disconnectWallet() {
   walletState.name = "";
   renderWalletState();
   setWalletMessage("钱包已断开。");
+  lockAccessGate();
 }
 
 function setupWallet() {
@@ -641,10 +706,7 @@ function setupWallet() {
   document.addEventListener("click", (event) => {
     if (!event.target.closest(".wallet-control")) setWalletMenu(false);
   });
-  const accessMode = localStorage.getItem(ACCESS_UNLOCK_KEY);
-  if (accessMode === "true" || accessMode === "developer") {
-    els.accessGate.hidden = true;
-  }
+  lockAccessGate();
   renderWalletState();
 }
 
