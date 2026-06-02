@@ -31,8 +31,13 @@ const FOOTBALL_CACHE_MS = 15_000;
 const POLYMARKET_BASE_URL = "https://gamma-api.polymarket.com";
 const POLYMARKET_CACHE_MS = 15_000;
 const POLYMARKET_DATA_URL = "https://data-api.polymarket.com";
+const POLYMARKET_WORLD_CUP_SERIES_ID = "11433";
+const POLYMARKET_WORLD_CUP_SPORT = "fifwc";
 const SMART_MONEY_CACHE_MS = 5_000;
 const SMART_MONEY_RANKING_CACHE_MS = 5 * 60_000;
+const SPORTS_NEWS_URL = "https://ok.surf/api/v1/news-section";
+const ESPN_WORLD_CUP_NEWS_URL = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/news";
+const SPORTS_NEWS_CACHE_MS = 10 * 60_000;
 const AUTH_CHALLENGE_MS = 5 * 60_000;
 const AUTH_SESSION_MS = 24 * 60 * 60_000;
 const AUTH_COOKIE = "fifa2026_session";
@@ -79,6 +84,10 @@ let footballCache = {
   payload: null,
 };
 let polymarketGamesCache = {
+  expiresAt: 0,
+  payload: null,
+};
+let sportsNewsCache = {
   expiresAt: 0,
   payload: null,
 };
@@ -188,6 +197,108 @@ async function fetchFootball(pathname, params = {}) {
   return payload.response || [];
 }
 
+function safeExternalUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : "";
+  } catch {
+    return "";
+  }
+}
+
+function formatSportsNewsArticle(article) {
+  return {
+    imageUrl: safeExternalUrl(article.og || article.image || article.imageUrl || ""),
+    link: safeExternalUrl(article.link || article.url || ""),
+    publishedAt: article.publishedAt || article.published_at || article.date || "",
+    source: article.source || article.publisher || "Sports News",
+    title: article.title || "Sports update",
+  };
+}
+
+async function fetchSportsNews() {
+  let espnError;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const response = await fetch(ESPN_WORLD_CUP_NEWS_URL, {
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(12_000),
+      });
+      if (!response.ok) throw new Error(`ESPN ${response.status}`);
+      const payload = await response.json();
+      const articles = (payload.articles || [])
+        .map((article) => formatSportsNewsArticle({
+          imageUrl: article.images?.[0]?.url,
+          link: article.links?.web?.href,
+          publishedAt: article.published,
+          source: "ESPN World Cup",
+          title: article.headline,
+        }))
+        .filter((article) => article.link && article.title)
+        .slice(0, 60);
+      if (!articles.length) throw new Error("ESPN returned no World Cup articles");
+      return articles;
+    } catch (error) {
+      espnError = error;
+      if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 350));
+    }
+  }
+
+  try {
+    const response = await fetch(SPORTS_NEWS_URL, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ sections: ["Sports"] }),
+      signal: AbortSignal.timeout(3_500),
+    });
+    if (!response.ok) throw new Error(`OKSURF ${response.status}`);
+    const payload = await response.json();
+    const articles = (Array.isArray(payload) ? payload : payload.articles || payload.data || [])
+      .map(formatSportsNewsArticle)
+      .filter((article) => article.link && article.title)
+      .slice(0, 60);
+    if (!articles.length) throw new Error("OKSURF returned no sports articles");
+    return articles;
+  } catch (oksurfError) {
+    throw new Error(`${espnError.message}; ${oksurfError.message}`);
+  }
+}
+
+async function getSportsNews(query = "") {
+  const cached = sportsNewsCache.payload;
+  if (!cached || sportsNewsCache.expiresAt <= Date.now()) {
+    try {
+      sportsNewsCache = {
+        expiresAt: Date.now() + SPORTS_NEWS_CACHE_MS,
+        payload: {
+          articles: await fetchSportsNews(),
+          stale: false,
+          updatedAt: new Date().toISOString(),
+        },
+      };
+    } catch (error) {
+      if (!cached) throw error;
+      sportsNewsCache = {
+        expiresAt: Date.now() + SPORTS_NEWS_CACHE_MS,
+        payload: { ...cached, stale: true },
+      };
+    }
+  }
+  const normalizedQuery = query.trim().toLowerCase();
+  const articles = normalizedQuery
+    ? sportsNewsCache.payload.articles.filter((article) =>
+      `${article.title} ${article.source}`.toLowerCase().includes(normalizedQuery))
+    : sportsNewsCache.payload.articles;
+  return {
+    ...sportsNewsCache.payload,
+    articles: (articles.length ? articles : sportsNewsCache.payload.articles).slice(0, 12),
+    query: normalizedQuery,
+  };
+}
+
 function parseMaybeJson(value) {
   if (Array.isArray(value)) return value;
   if (typeof value !== "string") return [];
@@ -205,10 +316,14 @@ function asPercentage(value) {
 }
 
 function isWorldCupGameEvent(event) {
-  const text = `${event.title || ""} ${event.slug || ""}`.toLowerCase();
+  const text = [
+    event.title,
+    event.slug,
+    ...(event.markets || []).flatMap((market) => [market.question, market.slug, market.groupItemTitle]),
+  ].filter(Boolean).join(" ").toLowerCase();
   return (
-    text.includes("world cup") &&
-    (text.includes(" vs ") || text.includes("-vs-")) &&
+    (text.includes("world cup") || String(event.slug || "").startsWith("fifwc-")) &&
+    (/\bvs\.?\s/.test(text) || text.includes("-vs-")) &&
     !text.includes("women") &&
     !text.includes("u19") &&
     !text.includes("qualifier")
@@ -216,27 +331,49 @@ function isWorldCupGameEvent(event) {
 }
 
 function formatPolymarketGame(event) {
-  return {
-    eventUrl: `https://polymarket.com/event/${event.slug}`,
-    id: event.id,
-    markets: (event.markets || [])
-      .filter((market) => market && !market.closed && market.active !== false)
+  const activeMarkets = (event.markets || [])
+    .filter((market) => market && !market.closed && market.active !== false);
+  const moneylineMarkets = activeMarkets.filter((market) => market.sportsMarketType === "moneyline");
+  const markets = moneylineMarkets.length
+    ? [{
+      id: `moneyline-${event.id}`,
+      liquidity: moneylineMarkets.reduce((total, market) => total + Number(market.liquidityNum || market.liquidity || 0), 0),
+      marketType: "moneyline",
+      outcomes: moneylineMarkets.map((market) => ({
+        label: String(market.groupItemTitle || market.question || "Outcome").replace(/\s+\(.+\)$/, ""),
+        percentage: asPercentage(parseMaybeJson(market.outcomePrices)[0]),
+      })).filter((outcome) => outcome.percentage !== null),
+      question: "胜负线",
+      volume: moneylineMarkets.reduce((total, market) => total + Number(market.volumeNum || market.volume || 0), 0),
+    }]
+    : activeMarkets
       .slice(0, 6)
       .map((market) => {
         const outcomes = parseMaybeJson(market.outcomes);
         const prices = parseMaybeJson(market.outcomePrices);
         return {
           id: market.id,
+          liquidity: Number(market.liquidityNum || market.liquidity || 0),
           marketType: market.sportsMarketType || market.marketType || "",
           outcomes: outcomes.map((outcome, index) => ({
             label: String(outcome),
             percentage: asPercentage(prices[index]),
           })).filter((outcome) => outcome.percentage !== null),
           question: market.question || market.groupItemTitle || "Match odds",
+          volume: Number(market.volumeNum || market.volume || 0),
         };
-      }),
-    startTime: event.startTime || event.startDate || "",
+      });
+  return {
+    eventUrl: `https://polymarket.com/zh/sports/world-cup/${event.slug}`,
+    id: event.id,
+    imageUrl: safeExternalUrl(event.image || event.icon || ""),
+    liquidity: Number(event.liquidity || 0),
+    live: Boolean(event.live),
+    markets,
+    startTime: event.startTime || event.endDate || "",
+    slug: event.slug || "",
     title: event.title || event.slug,
+    volume: Number(event.volume || 0),
   };
 }
 
@@ -245,31 +382,59 @@ async function getPolymarketWorldCupGames() {
     return polymarketGamesCache.payload;
   }
 
-  const url = new URL("/public-search", POLYMARKET_BASE_URL);
+  const sportsUrl = new URL("/sports", POLYMARKET_BASE_URL);
+  const eventsUrl = new URL("/events", POLYMARKET_BASE_URL);
   Object.entries({
-    events_status: "active",
-    keep_closed_markets: "0",
-    limit_per_type: "100",
-    q: "world cup",
-    search_profiles: "false",
-    search_tags: "false",
-  }).forEach(([key, value]) => url.searchParams.set(key, value));
+    active: "true",
+    closed: "false",
+    limit: "100",
+  }).forEach(([key, value]) => eventsUrl.searchParams.set(key, value));
 
-  const response = await fetch(url, { headers: { Accept: "application/json" } });
-  if (!response.ok) throw new Error(`Polymarket ${response.status}`);
-  const search = await response.json();
-  const games = (search.events || []).filter(isWorldCupGameEvent).map(formatPolymarketGame);
-  const payload = {
-    games,
-    message: games.length ? "" : "等待开赛",
-    pollIntervalMs: POLYMARKET_CACHE_MS,
-    updatedAt: new Date().toISOString(),
-  };
-  polymarketGamesCache = {
-    expiresAt: Date.now() + POLYMARKET_CACHE_MS,
-    payload,
-  };
-  return payload;
+  let lastError;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const sportsResponse = await fetch(sportsUrl, {
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(12_000),
+      });
+      if (!sportsResponse.ok) throw new Error(`Polymarket sports ${sportsResponse.status}`);
+      const sports = await sportsResponse.json();
+      const worldCup = sports.find((sport) => sport.sport === POLYMARKET_WORLD_CUP_SPORT);
+      eventsUrl.searchParams.set("series_id", worldCup?.series || POLYMARKET_WORLD_CUP_SERIES_ID);
+      const eventsResponse = await fetch(eventsUrl, {
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(12_000),
+      });
+      if (!eventsResponse.ok) throw new Error(`Polymarket events ${eventsResponse.status}`);
+      const games = (await eventsResponse.json())
+        .filter(isWorldCupGameEvent)
+        .filter((event) => !event.slug.includes("-more-markets"))
+        .map(formatPolymarketGame);
+      const payload = {
+        games,
+        message: games.length ? "" : "等待开赛",
+        pollIntervalMs: POLYMARKET_CACHE_MS,
+        stale: false,
+        updatedAt: new Date().toISOString(),
+      };
+      polymarketGamesCache = {
+        expiresAt: Date.now() + POLYMARKET_CACHE_MS,
+        payload,
+      };
+      return payload;
+    } catch (error) {
+      lastError = error;
+      if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 350));
+    }
+  }
+
+  if (polymarketGamesCache.payload) {
+    return {
+      ...polymarketGamesCache.payload,
+      stale: true,
+    };
+  }
+  throw lastError;
 }
 
 async function fetchPolymarketData(pathname, params = {}) {
@@ -1019,6 +1184,21 @@ const server = http.createServer(async (request, response) => {
         standings: [],
         updatedAt: new Date().toISOString(),
         websocket: false,
+      });
+    }
+  }
+
+  if (request.method === "GET" && request.url.startsWith("/api/news/sports")) {
+    try {
+      const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
+      return json(response, 200, await getSportsNews(url.searchParams.get("team") || ""));
+    } catch (error) {
+      console.error("Sports news failed:", error);
+      return json(response, 502, {
+        articles: [],
+        error: "体育新闻暂时不可用",
+        stale: true,
+        updatedAt: new Date().toISOString(),
       });
     }
   }

@@ -53,6 +53,51 @@ function newsFor(team) {
   ];
 }
 
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;"
+  })[character]);
+}
+
+function renderTeamUpdates(updates) {
+  const target = document.querySelector("#teamNewsList");
+  if (!target) return;
+  target.innerHTML = updates.map((update) => `
+    <article class="news-item">
+      <time datetime="${escapeHtml(update.publishedAt || update.date || "")}">${escapeHtml(update.source || update.date || "球队动态")}</time>
+      <div>
+        <h4>
+          ${update.link
+            ? `<a href="${escapeHtml(update.link)}" target="_blank" rel="noreferrer">${escapeHtml(update.title)}</a>`
+            : escapeHtml(update.title)}
+        </h4>
+        ${update.summary ? `<p>${escapeHtml(update.summary)}</p>` : ""}
+      </div>
+    </article>
+  `).join("");
+}
+
+async function refreshTeamNews(team) {
+  try {
+    const response = await fetch(`/api/news/sports?team=${encodeURIComponent(team.name)}`, {
+      headers: { Accept: "application/json" }
+    });
+    const payload = await response.json();
+    if (!response.ok || !payload.articles.length) {
+      document.querySelector("#teamNewsState").textContent = "球队动态";
+      return;
+    }
+    renderTeamUpdates(payload.articles.slice(0, 8));
+    document.querySelector("#teamNewsState").textContent = payload.stale ? "最近快照" : "实时体育新闻";
+  } catch {
+    document.querySelector("#teamNewsState").textContent = "球队动态";
+  }
+}
+
 function renderNotFound() {
   document.querySelector("#teamDetail").innerHTML = `
     <section class="panel detail-empty">
@@ -154,20 +199,13 @@ function renderTeam(team) {
           <p class="eyebrow">Latest Updates</p>
           <h3>球队最新动态</h3>
         </div>
+        <span id="teamNewsState">正在更新...</span>
       </div>
-      <div class="news-list">
-        ${updates.map((update) => `
-          <article class="news-item">
-            <time datetime="${update.date}">${update.date}</time>
-            <div>
-              <h4>${update.title}</h4>
-              <p>${update.summary}</p>
-            </div>
-          </article>
-        `).join("")}
-      </div>
+      <div id="teamNewsList" class="news-list"></div>
     </section>
   `;
+  renderTeamUpdates(updates);
+  void refreshTeamNews(team);
 }
 
 const code = new URLSearchParams(window.location.search).get("team");

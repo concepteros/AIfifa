@@ -1421,8 +1421,62 @@ footer a {
   font-size: 17px;
 }
 
+.news-item h4 a {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.news-item h4 a:hover {
+  color: var(--green);
+}
+
 .news-item p {
   line-height: 1.6;
+}
+
+.sports-news-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.sports-news-card {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfb;
+}
+
+.sports-news-card img {
+  width: 100%;
+  aspect-ratio: 16 / 8;
+  object-fit: cover;
+}
+
+.sports-news-card div {
+  display: grid;
+  gap: 6px;
+  padding: 13px;
+}
+
+.sports-news-card span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.sports-news-card h4 {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.sports-news-card a {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.sports-news-card a:hover {
+  color: var(--green);
 }
 
 .detail-empty {
@@ -1681,6 +1735,157 @@ footer a {
   color: var(--muted);
 }
 
+.prediction-market-list,
+.prediction-market-odds {
+  display: grid;
+  gap: 12px;
+}
+
+.prediction-sports-socket-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.prediction-live-scores {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.prediction-live-scores article {
+  display: grid;
+  gap: 5px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.prediction-live-scores span,
+.prediction-live-scores small,
+.prediction-market-score span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.prediction-live-scores strong {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+  font-size: 12px;
+}
+
+.prediction-live-scores b,
+.prediction-market-score strong {
+  color: var(--green);
+}
+
+.prediction-market-card {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfb;
+}
+
+.prediction-market-heading,
+.prediction-market-meta,
+.prediction-market-odds section > div:first-child,
+.prediction-market-outcomes {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.prediction-market-heading {
+  padding: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.prediction-market-heading span,
+.prediction-market-meta,
+.prediction-market-odds section > div:first-child span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.prediction-market-heading h4 {
+  margin: 4px 0 0;
+  font-size: 15px;
+}
+
+.prediction-market-heading a {
+  flex: 0 0 auto;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.prediction-market-score {
+  display: grid;
+  gap: 2px;
+  margin-left: auto;
+  text-align: right;
+}
+
+.prediction-market-score strong {
+  font-size: 16px;
+}
+
+.prediction-market-meta {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.prediction-market-odds {
+  padding: 14px;
+}
+
+.prediction-market-odds section {
+  display: grid;
+  gap: 9px;
+}
+
+.prediction-market-odds section + section {
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.prediction-market-odds section > div:first-child strong {
+  font-size: 13px;
+}
+
+.prediction-market-outcomes {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.prediction-market-outcomes span {
+  display: flex;
+  min-width: 112px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  font-size: 12px;
+}
+
+.prediction-market-outcomes strong {
+  color: var(--green);
+}
+
 @media (max-width: 1100px) {
   .dashboard-shell {
     display: block;
@@ -1703,7 +1908,9 @@ footer a {
   .team-grid,
   .history-grid,
   .portal-group-grid,
-  .portal-mvp-grid {
+  .portal-mvp-grid,
+  .prediction-live-scores,
+  .sports-news-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -1753,7 +1960,9 @@ footer a {
   .player-row,
   .feature-nav,
   .portal-group-grid,
-  .portal-mvp-grid {
+  .portal-mvp-grid,
+  .prediction-live-scores,
+  .sports-news-grid {
     grid-template-columns: 1fr;
   }
 

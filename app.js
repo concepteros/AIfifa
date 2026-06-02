@@ -42,6 +42,8 @@ const els = {
   liveMatchList: document.querySelector("#liveMatchList"),
   standingsList: document.querySelector("#standingsList"),
   footballUpdatedAt: document.querySelector("#footballUpdatedAt"),
+  sportsNewsList: document.querySelector("#sportsNewsList"),
+  sportsNewsUpdatedAt: document.querySelector("#sportsNewsUpdatedAt"),
   smartMoneyCustomWallets: document.querySelector("#smartMoneyCustomWallets"),
   smartMoneyMessage: document.querySelector("#smartMoneyMessage"),
   smartMoneyPushToggle: document.querySelector("#smartMoneyPushToggle"),
@@ -913,6 +915,36 @@ async function refreshLiveFootball() {
   }
 }
 
+function renderSportsNews(payload) {
+  if (!els.sportsNewsList || !els.sportsNewsUpdatedAt) return;
+  els.sportsNewsUpdatedAt.textContent = payload.stale
+    ? "最近快照"
+    : `更新：${new Intl.DateTimeFormat("zh-CN", { timeStyle: "short" }).format(new Date(payload.updatedAt))}`;
+  els.sportsNewsList.innerHTML = payload.articles.length
+    ? payload.articles.slice(0, 6).map((article) => `
+      <article class="sports-news-card">
+        ${article.imageUrl ? `<img src="${escapeHtml(article.imageUrl)}" alt="" loading="lazy" />` : ""}
+        <div>
+          <span>${escapeHtml(article.source)}</span>
+          <h4><a href="${escapeHtml(article.link)}" target="_blank" rel="noreferrer">${escapeHtml(article.title)}</a></h4>
+        </div>
+      </article>
+    `).join("")
+    : '<p class="live-empty-detail">体育新闻暂时不可用，请稍后重试。</p>';
+}
+
+async function refreshSportsNews() {
+  try {
+    const response = await fetch("/api/news/sports", { headers: { Accept: "application/json" } });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || "体育新闻请求失败");
+    renderSportsNews(payload);
+  } catch (error) {
+    console.warn(error);
+    renderSportsNews({ articles: [], stale: true, updatedAt: new Date().toISOString() });
+  }
+}
+
 function shortWallet(address) {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
@@ -1125,3 +1157,5 @@ setInterval(refreshData, 30000);
 refreshLiveFootball();
 setInterval(refreshLiveFootball, 15000);
 setupSmartMoney();
+refreshSportsNews();
+setInterval(refreshSportsNews, 10 * 60 * 1000);

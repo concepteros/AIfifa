@@ -1,7 +1,14 @@
 const page = document.body.dataset.portalPage;
 const POLL_INTERVAL_MS = 15_000;
 const PREDICTION_POLL_INTERVAL_MS = 10_000;
+const POLYMARKET_POLL_INTERVAL_MS = 15_000;
+const POLYMARKET_SPORTS_WS_URL = "wss://sports-api.polymarket.com/ws";
 let fallbackVoterId = "";
+let predictionMarketsTimer = null;
+let predictionSportsReconnectTimer = null;
+let predictionSportsSocket = null;
+let predictionMarketsPayload = null;
+const predictionSportsResults = new Map();
 const MVP_WINNERS = [
   { year: 1978, name: "Mario Kempes", team: "Argentina" },
   { year: 1982, name: "Paolo Rossi", team: "Italy" },
@@ -22,6 +29,25 @@ function formatDate(value) {
     dateStyle: "medium",
     timeStyle: "short"
   }).format(new Date(value));
+}
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;"
+  })[character]);
+}
+
+function formatCompactCurrency(value) {
+  return new Intl.NumberFormat("zh-CN", {
+    currency: "USD",
+    maximumFractionDigits: 1,
+    notation: "compact",
+    style: "currency"
+  }).format(Number(value) || 0);
 }
 
 function renderEvents(events) {
@@ -197,6 +223,155 @@ async function submitPrediction(event) {
   }
 }
 
+function renderPredictionMarkets(payload) {
+  const target = document.querySelector("#predictionMarkets");
+  const updatedAt = document.querySelector("#predictionMarketsUpdatedAt");
+  if (!target || !updatedAt) return;
+
+  updatedAt.textContent = payload.stale
+    ? "正在展示最近快照"
+    : `更新：${formatDate(payload.updatedAt)}`;
+
+  if (!payload.games.length) {
+    target.innerHTML = `
+      <div class="live-empty">
+        <strong>等待开赛</strong>
+        <span>世界杯竞猜盘口上线后将在这里即时同步，页面会每 15 秒自动检查。</span>
+      </div>
+    `;
+    return;
+  }
+
+  predictionMarketsPayload = payload;
+  target.innerHTML = payload.games.map((game) => {
+    const score = predictionSportsResults.get(game.slug);
+    return `
+    <article class="prediction-market-card">
+      <div class="prediction-market-heading">
+        <div>
+          <span>${game.live ? "比赛进行中" : "赛事盘口"}</span>
+          <h4>${escapeHtml(game.title)}</h4>
+        </div>
+        ${score ? `
+          <div class="prediction-market-score">
+            <strong>${escapeHtml(score.score || "等待比分")}</strong>
+            <span>${escapeHtml([score.period, score.elapsed].filter(Boolean).join(" · ") || score.status || "实时")}</span>
+          </div>
+        ` : ""}
+        <a href="${escapeHtml(game.eventUrl)}" target="_blank" rel="noreferrer">查看市场</a>
+      </div>
+      <div class="prediction-market-meta">
+        <span>${game.startTime ? `开赛：${formatDate(game.startTime)}` : "开赛时间待定"}</span>
+        <span>成交量 ${formatCompactCurrency(game.volume)}</span>
+        <span>流动性 ${formatCompactCurrency(game.liquidity)}</span>
+      </div>
+      <div class="prediction-market-odds">
+        ${game.markets.length
+          ? game.markets.map((market) => `
+            <section>
+              <div>
+                <strong>${escapeHtml(market.question)}</strong>
+                ${market.marketType ? `<span>${escapeHtml(market.marketType)}</span>` : ""}
+              </div>
+              <div class="prediction-market-outcomes">
+                ${market.outcomes.map((outcome) => `
+                  <span>
+                    <b>${escapeHtml(outcome.label)}</b>
+                    <strong>${outcome.percentage.toFixed(1)}%</strong>
+                  </span>
+                `).join("")}
+              </div>
+            </section>
+          `).join("")
+          : '<p class="live-empty-detail">该赛事盘口正在更新。</p>'}
+      </div>
+    </article>
+  `;
+  }).join("");
+}
+
+async function refreshPredictionMarkets() {
+  window.clearTimeout(predictionMarketsTimer);
+  let nextPoll = POLYMARKET_POLL_INTERVAL_MS;
+  try {
+    const response = await fetch("/api/polymarket/world-cup-games", {
+      headers: { Accept: "application/json" }
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || "Polymarket 盘口加载失败");
+    nextPoll = payload.pollIntervalMs || nextPoll;
+    renderPredictionMarkets(payload);
+  } catch (error) {
+    console.warn(error);
+    renderPredictionMarkets({
+      games: [],
+      stale: true,
+      updatedAt: new Date().toISOString()
+    });
+  } finally {
+    predictionMarketsTimer = window.setTimeout(refreshPredictionMarkets, nextPoll);
+  }
+}
+
+function isWorldCupSportsResult(result) {
+  const slug = String(result.slug || "").toLowerCase();
+  const league = String(result.leagueAbbreviation || "").toLowerCase();
+  return slug.startsWith("fifwc-") || slug.includes("world-cup") || league.includes("fif");
+}
+
+function renderPredictionLiveScores() {
+  const target = document.querySelector("#predictionLiveScores");
+  if (!target) return;
+  const scores = [...predictionSportsResults.values()]
+    .sort((left, right) => String(left.slug).localeCompare(String(right.slug)))
+    .slice(0, 12);
+
+  target.innerHTML = scores.map((score) => `
+    <article>
+      <span>${escapeHtml(score.status || "实时")}</span>
+      <strong>${escapeHtml(score.homeTeam || "-")} <b>${escapeHtml(score.score || "-")}</b> ${escapeHtml(score.awayTeam || "-")}</strong>
+      <small>${escapeHtml([score.period, score.elapsed].filter(Boolean).join(" · "))}</small>
+    </article>
+  `).join("");
+}
+
+function connectPredictionSportsSocket() {
+  const state = document.querySelector("#predictionSportsSocketState span:last-child");
+  if (!state) return;
+  window.clearTimeout(predictionSportsReconnectTimer);
+  predictionSportsSocket?.close();
+  state.textContent = "正在连接 Polymarket 即时比分...";
+
+  const socket = new WebSocket(POLYMARKET_SPORTS_WS_URL);
+  predictionSportsSocket = socket;
+  socket.addEventListener("open", () => {
+    state.textContent = "Polymarket 即时比分已连接";
+  });
+  socket.addEventListener("message", (event) => {
+    if (event.data === "ping") {
+      socket.send("pong");
+      return;
+    }
+    try {
+      const payload = JSON.parse(event.data);
+      const results = Array.isArray(payload) ? payload : [payload];
+      results.filter(isWorldCupSportsResult).forEach((result) => {
+        if (result.slug) predictionSportsResults.set(result.slug, result);
+      });
+      renderPredictionLiveScores();
+      if (predictionMarketsPayload) renderPredictionMarkets(predictionMarketsPayload);
+    } catch (error) {
+      console.warn("Polymarket sports message ignored", error);
+    }
+  });
+  socket.addEventListener("close", () => {
+    if (predictionSportsSocket !== socket) return;
+    state.textContent = "即时比分连接中断，正在重试...";
+    predictionSportsReconnectTimer = window.setTimeout(connectPredictionSportsSocket, 5_000);
+  });
+  socket.addEventListener("error", () => socket.close());
+}
+
 function setupPredictions() {
   const teams = [...window.WORLD_CUP_DATA.teams].sort((a, b) => a.name.localeCompare(b.name));
   document.querySelector("#predictionTeam").innerHTML = teams.map((team) => `
@@ -209,6 +384,8 @@ function setupPredictions() {
   setInterval(() => {
     refreshPredictions().catch(() => {});
   }, PREDICTION_POLL_INTERVAL_MS);
+  refreshPredictionMarkets();
+  connectPredictionSportsSocket();
 }
 
 if (page === "groups") {
