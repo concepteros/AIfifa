@@ -26,6 +26,9 @@ const WORLD_CUP_SEASON = "2026";
 const FOOTBALL_CACHE_MS = 15_000;
 const POLYMARKET_BASE_URL = "https://gamma-api.polymarket.com";
 const POLYMARKET_CACHE_MS = 15_000;
+const POLYMARKET_DATA_URL = "https://data-api.polymarket.com";
+const SMART_MONEY_CACHE_MS = 5_000;
+const SMART_MONEY_RANKING_CACHE_MS = 5 * 60_000;
 const DEVELOPER_WALLETS = new Set(
   (process.env.DEVELOPER_WALLETS || RECIPIENT)
     .split(",")
@@ -63,6 +66,12 @@ let polymarketGamesCache = {
   expiresAt: 0,
   payload: null,
 };
+let smartMoneyRankingCache = {
+  expiresAt: 0,
+  wallets: [],
+};
+let smartMoneyRankingPromise = null;
+const smartMoneyFeedCache = new Map();
 
 function json(response, status, payload) {
   response.writeHead(status, {
@@ -187,6 +196,197 @@ async function getPolymarketWorldCupGames() {
     payload,
   };
   return payload;
+}
+
+async function fetchPolymarketData(pathname, params = {}) {
+  const url = new URL(pathname, POLYMARKET_DATA_URL);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== "") url.searchParams.set(key, String(value));
+  });
+  const response = await fetch(url, { headers: { Accept: "application/json" } });
+  if (!response.ok) throw new Error(`Polymarket Data API ${response.status}`);
+  return response.json();
+}
+
+function isWalletAddress(value) {
+  return /^0x[a-fA-F0-9]{40}$/.test(value || "");
+}
+
+function shortWallet(address) {
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
+function isSportsTrade(item) {
+  const text = `${item.title || ""} ${item.slug || ""} ${item.eventSlug || ""}`.toLowerCase();
+  return (
+    /\bvs\b/.test(text) ||
+    [
+      "soccer", "football", "world cup", "premier league", "champions league", "europa league",
+      "la liga", "bundesliga", "serie a", "ligue 1", "mls", "nba", "wnba", "nfl", "nhl",
+      "mlb", "ufc", "tennis", "cricket", "fifa", "uefa",
+    ].some((keyword) => text.includes(keyword))
+  );
+}
+
+function isFootballTrade(item) {
+  const text = `${item.title || ""} ${item.slug || ""} ${item.eventSlug || ""}`.toLowerCase();
+  return [
+    "soccer", "football", "world cup", "premier league", "champions league", "europa league",
+    "la liga", "bundesliga", "serie a", "ligue 1", "mls", "fifa", "uefa",
+  ].some((keyword) => text.includes(keyword));
+}
+
+async function estimateSportsWinRate(address) {
+  try {
+    const positions = await fetchPolymarketData("/closed-positions", {
+      limit: 50,
+      offset: 0,
+      sortBy: "TIMESTAMP",
+      sortDirection: "DESC",
+      user: address,
+    });
+    const sports = positions.filter(isSportsTrade);
+    const sample = sports.length ? sports : positions;
+    if (!sample.length) return { sampleSize: 0, winRate: null };
+    const wins = sample.filter((position) => Number(position.realizedPnl) > 0).length;
+    return { sampleSize: sample.length, winRate: (wins / sample.length) * 100 };
+  } catch {
+    return { sampleSize: 0, winRate: null };
+  }
+}
+
+async function getSmartMoneyRanking() {
+  if (smartMoneyRankingCache.wallets.length && smartMoneyRankingCache.expiresAt > Date.now()) {
+    return smartMoneyRankingCache.wallets;
+  }
+  if (smartMoneyRankingPromise) return smartMoneyRankingPromise;
+  smartMoneyRankingPromise = (async () => {
+    const ranking = await fetchPolymarketData("/v1/leaderboard", {
+      category: "SPORTS",
+      limit: 25,
+      offset: 0,
+      orderBy: "PNL",
+      timePeriod: "MONTH",
+    });
+    const winRates = await Promise.all(ranking.map((wallet) => estimateSportsWinRate(wallet.proxyWallet)));
+    const wallets = ranking
+      .map((wallet, index) => ({
+        address: wallet.proxyWallet,
+        label: wallet.userName || shortWallet(wallet.proxyWallet),
+        pnl: Number(wallet.pnl || 0),
+        sampleSize: winRates[index].sampleSize,
+        sourceRank: Number(wallet.rank || index + 1),
+        volume: Number(wallet.vol || 0),
+        winRate: winRates[index].winRate,
+      }))
+      .sort((left, right) =>
+        (right.winRate ?? -1) - (left.winRate ?? -1) || right.pnl - left.pnl,
+      )
+      .map((wallet, index) => ({ ...wallet, rank: index + 1 }));
+    smartMoneyRankingCache = {
+      expiresAt: Date.now() + SMART_MONEY_RANKING_CACHE_MS,
+      wallets,
+    };
+    return wallets;
+  })();
+  try {
+    return await smartMoneyRankingPromise;
+  } finally {
+    smartMoneyRankingPromise = null;
+  }
+}
+
+function formatSmartMoneyTrade(trade, trackedWallets) {
+  const wallet = trackedWallets.get(trade.proxyWallet.toLowerCase());
+  return {
+    address: trade.proxyWallet,
+    amount: Number(trade.size || 0) * Number(trade.price || 0),
+    eventUrl: trade.eventSlug ? `https://polymarket.com/event/${trade.eventSlug}` : "",
+    football: isFootballTrade(trade),
+    label: wallet?.label || trade.name || trade.pseudonym || shortWallet(trade.proxyWallet),
+    outcome: trade.outcome || "",
+    price: Number(trade.price || 0) * 100,
+    side: trade.side || "",
+    size: Number(trade.size || 0),
+    timestamp: Number(trade.timestamp || 0),
+    title: trade.title || trade.slug || "Sports market",
+    transactionHash: trade.transactionHash || "",
+  };
+}
+
+function parseCustomWallets(url) {
+  return [...new Set((url.searchParams.get("wallets") || "")
+    .split(",")
+    .map((wallet) => wallet.trim().toLowerCase())
+    .filter(isWalletAddress))]
+    .slice(0, 20);
+}
+
+async function getSmartMoneyFeed(customWallets = []) {
+  const cacheKey = customWallets.join(",");
+  const cached = smartMoneyFeedCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.payload;
+
+  const ranking = await getSmartMoneyRanking();
+  const trackedWallets = new Map(ranking.map((wallet) => [wallet.address.toLowerCase(), wallet]));
+  customWallets.forEach((address) => {
+    if (!trackedWallets.has(address)) {
+      trackedWallets.set(address, { address, label: shortWallet(address), custom: true });
+    }
+  });
+
+  const [recentTrades, ...customTrades] = await Promise.all([
+    fetchPolymarketData("/trades", { limit: 1000, offset: 0, takerOnly: false }),
+    ...customWallets.map((user) =>
+      fetchPolymarketData("/trades", { limit: 40, offset: 0, takerOnly: false, user }).catch(() => []),
+    ),
+  ]);
+  const seen = new Set();
+  const trades = [...recentTrades, ...customTrades.flat()]
+    .filter((trade) => trade.proxyWallet && trackedWallets.has(trade.proxyWallet.toLowerCase()))
+    .filter(isSportsTrade)
+    .filter((trade) => {
+      const key = `${trade.proxyWallet}:${trade.transactionHash}:${trade.asset}:${trade.side}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => Number(b.timestamp) - Number(a.timestamp))
+    .slice(0, 80)
+    .map((trade) => formatSmartMoneyTrade(trade, trackedWallets));
+
+  const payload = {
+    customWallets,
+    pollIntervalMs: SMART_MONEY_CACHE_MS,
+    ranking,
+    trades,
+    updatedAt: new Date().toISOString(),
+  };
+  smartMoneyFeedCache.set(cacheKey, {
+    expiresAt: Date.now() + SMART_MONEY_CACHE_MS,
+    payload,
+  });
+  return payload;
+}
+
+function streamSmartMoney(request, response) {
+  const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
+  const customWallets = parseCustomWallets(url);
+  response.writeHead(200, {
+    "Cache-Control": "no-cache, no-transform",
+    "Connection": "keep-alive",
+    "Content-Type": "text/event-stream; charset=utf-8",
+  });
+  const send = async () => {
+    try {
+      response.write(`data: ${JSON.stringify(await getSmartMoneyFeed(customWallets))}\n\n`);
+    } catch (error) {
+      response.write(`event: error\ndata: ${JSON.stringify({ error: "聪明钱数据暂时不可用" })}\n\n`);
+    }
+  };
+  send();
+  const interval = setInterval(send, SMART_MONEY_CACHE_MS);
+  request.on("close", () => clearInterval(interval));
 }
 
 function formatLiveFixture(item, events) {
@@ -605,6 +805,20 @@ const server = http.createServer(async (request, response) => {
         pollIntervalMs: POLYMARKET_CACHE_MS,
         updatedAt: new Date().toISOString(),
       });
+    }
+  }
+
+  if (request.method === "GET" && request.url.startsWith("/api/polymarket/smart-money-stream")) {
+    return streamSmartMoney(request, response);
+  }
+
+  if (request.method === "GET" && request.url.startsWith("/api/polymarket/smart-money")) {
+    try {
+      const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
+      return json(response, 200, await getSmartMoneyFeed(parseCustomWallets(url)));
+    } catch (error) {
+      console.error("Polymarket smart money failed:", error);
+      return json(response, 502, { error: "聪明钱数据暂时不可用" });
     }
   }
 

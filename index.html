@@ -260,21 +260,47 @@
       </section>
     </main>
 
-    <aside class="market-sidebar" aria-label="即时盘口">
+      <aside class="market-sidebar" aria-label="聪明钱监控">
       <div class="market-sidebar-heading">
         <div>
-          <p class="eyebrow">Polymarket Live</p>
-          <h3>即时盘口</h3>
+          <p class="eyebrow">Polymarket Sports</p>
+          <h3>聪明钱监控</h3>
         </div>
         <span class="pulse"></span>
       </div>
-      <p id="marketSidebarUpdatedAt" class="market-sidebar-updated">等待开赛</p>
-      <div id="marketSidebarList" class="market-sidebar-list">
-        <div class="market-sidebar-empty">
-          <strong>等待开赛</strong>
-          <span>比赛盘口将在开赛后即时更新。</span>
-        </div>
+      <div class="smart-money-toolbar">
+        <label class="smart-money-toggle">
+          <input id="smartMoneyPushToggle" type="checkbox" checked />
+          <span>即时推送</span>
+        </label>
+        <span id="smartMoneyUpdatedAt">正在连接...</span>
       </div>
+      <form id="smartMoneyWalletForm" class="smart-wallet-form">
+        <input id="smartMoneyWalletInput" type="text" placeholder="添加 0x 钱包地址" aria-label="添加监控钱包地址" />
+        <button type="submit" aria-label="添加钱包" title="添加钱包">+</button>
+      </form>
+      <p id="smartMoneyMessage" class="smart-money-message" aria-live="polite"></p>
+      <div id="smartMoneyCustomWallets" class="smart-wallet-list"></div>
+
+      <section class="smart-money-section">
+        <div class="smart-money-section-heading">
+          <strong>即时买卖</strong>
+          <span>体育 / 足球</span>
+        </div>
+        <div id="smartMoneyTrades" class="smart-money-trades">
+          <p class="market-sidebar-empty">等待交易推送</p>
+        </div>
+      </section>
+
+      <section class="smart-money-section">
+        <div class="smart-money-section-heading">
+          <strong>高胜率钱包 Top 25</strong>
+          <span>体育月榜</span>
+        </div>
+        <div id="smartMoneyRanking" class="smart-money-ranking">
+          <p class="market-sidebar-empty">正在加载排行榜...</p>
+        </div>
+      </section>
     </aside>
     </div>
 

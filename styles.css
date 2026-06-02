@@ -253,6 +253,206 @@ footer {
   font-size: 20px;
 }
 
+.smart-money-toolbar,
+.smart-money-section-heading,
+.smart-wallet-rank,
+.smart-trade > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.smart-money-toolbar {
+  margin: 12px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.smart-money-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.smart-money-toggle input {
+  accent-color: var(--green);
+}
+
+.smart-wallet-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  gap: 7px;
+}
+
+.smart-wallet-form input {
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+}
+
+.smart-wallet-form button,
+.smart-wallet-chip button {
+  border: 0;
+  border-radius: 6px;
+  background: var(--green);
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 900;
+}
+
+.smart-money-message {
+  min-height: 17px;
+  margin: 7px 0;
+  color: var(--green);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.smart-wallet-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.smart-wallet-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 5px 4px 8px;
+  border-radius: 999px;
+  background: #edf5ef;
+  color: var(--green-deep);
+  font-family: monospace;
+  font-size: 11px;
+}
+
+.smart-wallet-chip button {
+  width: 18px;
+  height: 18px;
+  background: transparent;
+  color: var(--green-deep);
+  line-height: 1;
+}
+
+.smart-money-section {
+  display: grid;
+  gap: 8px;
+  margin-top: 15px;
+  padding-top: 13px;
+  border-top: 1px solid var(--line);
+}
+
+.smart-money-section-heading strong {
+  font-size: 14px;
+}
+
+.smart-money-section-heading span,
+.smart-wallet-rank small,
+.smart-trade time,
+.smart-trade p {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.smart-money-trades,
+.smart-money-ranking {
+  display: grid;
+  gap: 7px;
+  overflow-y: auto;
+}
+
+.smart-money-trades {
+  max-height: 330px;
+}
+
+.smart-money-ranking {
+  max-height: 390px;
+}
+
+.smart-trade,
+.smart-wallet-rank {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fbfcfb;
+}
+
+.smart-trade {
+  display: grid;
+  gap: 5px;
+  padding: 9px;
+  border-left-width: 3px;
+}
+
+.smart-trade.buy {
+  border-left-color: #11884b;
+}
+
+.smart-trade.sell {
+  border-left-color: #c94b42;
+}
+
+.smart-trade strong,
+.smart-trade span {
+  font-size: 12px;
+}
+
+.smart-trade a {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+  text-decoration: none;
+}
+
+.smart-trade a:hover {
+  color: var(--green);
+}
+
+.smart-trade p {
+  margin: 0;
+}
+
+.smart-wallet-rank {
+  padding: 8px;
+}
+
+.smart-wallet-rank > b {
+  width: 18px;
+  color: var(--green);
+  font-size: 13px;
+}
+
+.smart-wallet-rank div {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 2px;
+}
+
+.smart-wallet-rank strong,
+.smart-wallet-rank small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.smart-wallet-rank > span {
+  display: grid;
+  justify-items: end;
+  color: var(--green-deep);
+  font-size: 13px;
+  font-weight: 900;
+}
+
 .market-sidebar-updated {
   margin: 10px 0 14px;
   color: var(--muted);
