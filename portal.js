@@ -44,13 +44,13 @@ function renderLiveMatches(payload) {
 
   updatedAt.textContent = payload.configured
     ? `更新：${formatDate(payload.updatedAt)}`
-    : "等待 API_FOOTBALL_KEY";
+    : "等待开赛";
 
   if (!payload.liveMatches.length) {
     list.innerHTML = `
       <div class="live-empty">
-        <strong>${payload.configured ? "当前暂无进行中的世界杯比赛" : "赛事 API 尚未配置"}</strong>
-        <span>${payload.configured ? "比赛开始后将每 15 秒自动刷新比分和关键事件。" : "请在后端配置赛事 API。"}</span>
+        <strong>等待开赛</strong>
+        <span>比赛开始后将每 15 秒自动刷新比分和关键事件。</span>
       </div>
     `;
     return;
@@ -221,7 +221,6 @@ function setupPredictions() {
 
 if (page === "groups") {
   renderGroups();
-  renderBracket();
   refreshLiveMatches();
   setInterval(refreshLiveMatches, POLL_INTERVAL_MS);
 }

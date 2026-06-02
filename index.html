@@ -123,7 +123,7 @@
         <a class="feature-nav-item groups" href="./groups.html">
           <span>01</span>
           <strong>小组赛</strong>
-          <small>即时情况与对战图</small>
+          <small>即时比分与小组情况</small>
         </a>
         <a class="feature-nav-item semifinals" href="./semifinals.html">
           <span>02</span>
@@ -217,7 +217,7 @@
             <p class="eyebrow">API-Football Live</p>
             <h3>世界杯实时比分</h3>
           </div>
-          <span id="footballUpdatedAt">正在连接赛事数据...</span>
+          <span id="footballUpdatedAt">等待开赛</span>
         </div>
         <div class="live-football-layout">
           <div>
@@ -230,24 +230,6 @@
             </div>
             <div id="standingsList" class="standings-list"></div>
           </aside>
-        </div>
-      </section>
-
-      <section class="panel bracket-panel">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Knockout Bracket</p>
-            <h3>世界杯即时对战图</h3>
-          </div>
-          <span id="bracketUpdatedAt">等待赛果 API</span>
-        </div>
-        <div class="bracket-legend">
-          <span><i class="legend-dot live"></i>进行中</span>
-          <span><i class="legend-dot qualified"></i>晋级</span>
-          <span><i class="legend-dot eliminated"></i>已淘汰</span>
-        </div>
-        <div class="bracket-scroll">
-          <div id="bracketGrid" class="bracket-grid"></div>
         </div>
       </section>
 
@@ -282,7 +264,6 @@
     </footer>
 
     <script src="./data.js"></script>
-    <script src="./bracket.js"></script>
     <script src="./squad-data.js"></script>
     <script src="./vendor/solana-web3.min.js"></script>
     <script src="./app.js"></script>

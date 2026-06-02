@@ -17,7 +17,7 @@
     <main class="portal-main">
       <section class="portal-intro">
         <p class="eyebrow">Group Stage Live</p>
-        <h2>即时比分、小组排名与对战图</h2>
+        <h2>即时比分与小组排名</h2>
         <p>赛事数据每 15 秒自动刷新。比赛开始后，这里会同步展示比分和关键事件。</p>
       </section>
       <section class="panel">
@@ -26,7 +26,7 @@
             <p class="eyebrow">API-Football Live</p>
             <h3>当前小组赛即时情况</h3>
           </div>
-          <span id="portalFootballUpdatedAt">正在连接赛事数据...</span>
+          <span id="portalFootballUpdatedAt">等待开赛</span>
         </div>
         <div id="portalLiveMatches" class="live-match-list"></div>
       </section>
@@ -40,26 +40,8 @@
         </div>
         <div id="portalGroups" class="portal-group-grid"></div>
       </section>
-      <section class="panel bracket-panel">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Tournament Map</p>
-            <h3>世界杯对战图</h3>
-          </div>
-          <span id="portalBracketUpdatedAt"></span>
-        </div>
-        <div class="bracket-legend">
-          <span><i class="legend-dot live"></i>进行中</span>
-          <span><i class="legend-dot qualified"></i>晋级</span>
-          <span><i class="legend-dot eliminated"></i>已淘汰</span>
-        </div>
-        <div class="bracket-scroll">
-          <div id="portalBracketGrid" class="bracket-grid"></div>
-        </div>
-      </section>
     </main>
     <script src="./data.js"></script>
-    <script src="./bracket.js"></script>
     <script src="./portal.js"></script>
   </body>
 </html>

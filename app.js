@@ -698,7 +698,7 @@ function renderBracket() {
   if (!bracket || !els.bracketGrid) return;
 
   els.bracketUpdatedAt.textContent = bracket.source === "demo"
-    ? "赛程演示 · 等待赛果 API"
+    ? "等待开赛"
     : `更新：${formatDate(bracket.updatedAt)}`;
 
   els.bracketGrid.innerHTML = bracket.rounds.map((round) => `
@@ -738,13 +738,13 @@ function renderLiveMatches(payload) {
   if (!els.liveMatchList) return;
   els.footballUpdatedAt.textContent = payload.configured
     ? `更新：${formatDate(payload.updatedAt)}`
-    : "等待 API_FOOTBALL_KEY";
+    : "等待开赛";
 
   if (!payload.liveMatches.length) {
     els.liveMatchList.innerHTML = `
       <div class="live-empty">
-        <strong>${payload.configured ? "当前暂无进行中的世界杯比赛" : "赛事 API 尚未配置"}</strong>
-        <span>${payload.configured ? "比赛开始后将每 15 秒自动刷新比分和事件。" : "在后端环境变量中设置 API_FOOTBALL_KEY 后即可接入实时比分。"}</span>
+        <strong>等待开赛</strong>
+        <span>比赛开始后将每 15 秒自动刷新比分和事件。</span>
       </div>
     `;
     return;
@@ -771,7 +771,7 @@ function renderStandings(payload) {
   if (!payload.standings.length) {
     els.standingsList.innerHTML = `
       <p class="live-empty-detail">
-        ${payload.standingsError || "积分榜将在赛事 API 接入后显示。"}
+        等待开赛
       </p>
     `;
     return;
@@ -857,7 +857,6 @@ function render() {
   renderMeta();
   renderContenders();
   renderMvp();
-  renderBracket();
   renderTeams();
   renderHistory();
 }
