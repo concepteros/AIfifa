@@ -72,6 +72,7 @@ let smartMoneyRankingCache = {
 };
 let smartMoneyRankingPromise = null;
 const smartMoneyFeedCache = new Map();
+const smartMoneyFeedPromises = new Map();
 
 function json(response, status, payload) {
   response.writeHead(status, {
@@ -203,9 +204,20 @@ async function fetchPolymarketData(pathname, params = {}) {
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== "") url.searchParams.set(key, String(value));
   });
-  const response = await fetch(url, { headers: { Accept: "application/json" } });
-  if (!response.ok) throw new Error(`Polymarket Data API ${response.status}`);
-  return response.json();
+  let lastError;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const response = await fetch(url, { headers: { Accept: "application/json" } });
+      if (!response.ok) throw new Error(`Polymarket Data API ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2) {
+        await new Promise((resolve) => setTimeout(resolve, 350 * (attempt + 1)));
+      }
+    }
+  }
+  throw lastError;
 }
 
 function isWalletAddress(value) {
@@ -326,47 +338,65 @@ async function getSmartMoneyFeed(customWallets = []) {
   const cacheKey = customWallets.join(",");
   const cached = smartMoneyFeedCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.payload;
+  if (smartMoneyFeedPromises.has(cacheKey)) return smartMoneyFeedPromises.get(cacheKey);
 
-  const ranking = await getSmartMoneyRanking();
-  const trackedWallets = new Map(ranking.map((wallet) => [wallet.address.toLowerCase(), wallet]));
-  customWallets.forEach((address) => {
-    if (!trackedWallets.has(address)) {
-      trackedWallets.set(address, { address, label: shortWallet(address), custom: true });
+  const feedPromise = (async () => {
+    try {
+    const ranking = await getSmartMoneyRanking();
+    const trackedWallets = new Map(ranking.map((wallet) => [wallet.address.toLowerCase(), wallet]));
+    customWallets.forEach((address) => {
+      if (!trackedWallets.has(address)) {
+        trackedWallets.set(address, { address, label: shortWallet(address), custom: true });
+      }
+    });
+
+    const [recentTrades, ...customTrades] = await Promise.all([
+      fetchPolymarketData("/trades", { limit: 1000, offset: 0, takerOnly: false }),
+      ...customWallets.map((user) =>
+        fetchPolymarketData("/trades", { limit: 40, offset: 0, takerOnly: false, user }).catch(() => []),
+      ),
+    ]);
+    const seen = new Set();
+    const trades = [...recentTrades, ...customTrades.flat()]
+      .filter((trade) => trade.proxyWallet && trackedWallets.has(trade.proxyWallet.toLowerCase()))
+      .filter(isSportsTrade)
+      .filter((trade) => {
+        const key = `${trade.proxyWallet}:${trade.transactionHash}:${trade.asset}:${trade.side}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((a, b) => Number(b.timestamp) - Number(a.timestamp))
+      .slice(0, 80)
+      .map((trade) => formatSmartMoneyTrade(trade, trackedWallets));
+
+    const payload = {
+      customWallets,
+      pollIntervalMs: SMART_MONEY_CACHE_MS,
+      ranking,
+      stale: false,
+      trades,
+      updatedAt: new Date().toISOString(),
+    };
+    smartMoneyFeedCache.set(cacheKey, {
+      expiresAt: Date.now() + SMART_MONEY_CACHE_MS,
+      payload,
+    });
+      return payload;
+    } catch (error) {
+      if (!cached?.payload) throw error;
+      return {
+        ...cached.payload,
+        stale: true,
+      };
     }
-  });
-
-  const [recentTrades, ...customTrades] = await Promise.all([
-    fetchPolymarketData("/trades", { limit: 1000, offset: 0, takerOnly: false }),
-    ...customWallets.map((user) =>
-      fetchPolymarketData("/trades", { limit: 40, offset: 0, takerOnly: false, user }).catch(() => []),
-    ),
-  ]);
-  const seen = new Set();
-  const trades = [...recentTrades, ...customTrades.flat()]
-    .filter((trade) => trade.proxyWallet && trackedWallets.has(trade.proxyWallet.toLowerCase()))
-    .filter(isSportsTrade)
-    .filter((trade) => {
-      const key = `${trade.proxyWallet}:${trade.transactionHash}:${trade.asset}:${trade.side}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .sort((a, b) => Number(b.timestamp) - Number(a.timestamp))
-    .slice(0, 80)
-    .map((trade) => formatSmartMoneyTrade(trade, trackedWallets));
-
-  const payload = {
-    customWallets,
-    pollIntervalMs: SMART_MONEY_CACHE_MS,
-    ranking,
-    trades,
-    updatedAt: new Date().toISOString(),
-  };
-  smartMoneyFeedCache.set(cacheKey, {
-    expiresAt: Date.now() + SMART_MONEY_CACHE_MS,
-    payload,
-  });
-  return payload;
+  })();
+  smartMoneyFeedPromises.set(cacheKey, feedPromise);
+  try {
+    return await feedPromise;
+  } finally {
+    smartMoneyFeedPromises.delete(cacheKey);
+  }
 }
 
 function streamSmartMoney(request, response) {

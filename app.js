@@ -4,7 +4,6 @@ const DEFAULT_POLYMARKET_QUERY = "2026 world cup winner";
 const ACCESS_SESSION_KEY = "fifa2026AccessSession";
 const SOLANA_USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 const SOLANA_USDC_RECIPIENT = "EwAh2VbsbgG2xWsFsDYMjmCUqq48cSkms1HATZDi3Vgq";
-const PREMIUM_PRICE_USDC = "19.9";
 const PREMIUM_PRICE_UNITS = 19_900_000n;
 const SOLANA_RPC_URL = "https://api.mainnet-beta.solana.com";
 const TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
@@ -45,8 +44,6 @@ const els = {
   teamGrid: document.querySelector("#teamGrid"),
   mvpList: document.querySelector("#mvpList"),
   historyContent: document.querySelector("#historyContent"),
-  bracketGrid: document.querySelector("#bracketGrid"),
-  bracketUpdatedAt: document.querySelector("#bracketUpdatedAt"),
   liveMatchList: document.querySelector("#liveMatchList"),
   standingsList: document.querySelector("#standingsList"),
   footballUpdatedAt: document.querySelector("#footballUpdatedAt"),
@@ -86,6 +83,7 @@ const walletState = {
   name: "",
   accountChangedHandler: null,
   accountsChangedHandler: null,
+  paymentCheckInFlight: false,
   paymentPoll: null
 };
 
@@ -546,6 +544,7 @@ function solanaAddress(result, provider) {
 
 function bindWalletAccountEvents() {
   if (!walletState.provider?.on) return;
+  unbindWalletAccountEvents();
   walletState.accountChangedHandler = (publicKey) => {
     const address = publicKey?.toString?.() || "";
     if (address === walletState.address) return;
@@ -563,11 +562,10 @@ function bindWalletAccountEvents() {
 }
 
 function unbindWalletAccountEvents() {
-  if (!walletState.provider?.removeListener) return;
-  if (walletState.accountChangedHandler) {
+  if (walletState.provider?.removeListener && walletState.accountChangedHandler) {
     walletState.provider.removeListener("accountChanged", walletState.accountChangedHandler);
   }
-  if (walletState.accountsChangedHandler) {
+  if (walletState.provider?.removeListener && walletState.accountsChangedHandler) {
     walletState.provider.removeListener("accountsChanged", walletState.accountsChangedHandler);
   }
   walletState.accountChangedHandler = null;
@@ -625,6 +623,9 @@ async function checkPremiumAccess() {
     setAccessMessage("收款地址尚未配置，暂时不能验证支付。");
     return;
   }
+  if (walletState.paymentCheckInFlight) return;
+  const checkedWallet = walletState.address;
+  walletState.paymentCheckInFlight = true;
   setAccessStep("verify");
   setAccessMessage("正在检查链上到账...");
   els.accessCheckButton.disabled = true;
@@ -646,6 +647,7 @@ async function checkPremiumAccess() {
       setAccessStep("payment");
       return;
     }
+    if (checkedWallet !== walletState.address) return;
 
     if (payload.developerMode) {
       setAccessMessage("开发者模式已启用。");
@@ -658,6 +660,7 @@ async function checkPremiumAccess() {
     setAccessMessage(error.message || "支付状态检查失败，请稍后重试。");
     setAccessStep("payment");
   } finally {
+    walletState.paymentCheckInFlight = false;
     els.accessCheckButton.disabled = false;
   }
 }
@@ -790,42 +793,6 @@ function renderMvp() {
     .join("");
 }
 
-function renderBracketTeam(team) {
-  const score = team.score === null ? "-" : team.score;
-  return `
-    <div class="bracket-team ${team.state}">
-      <span>${team.name}</span>
-      <strong>${score}</strong>
-    </div>
-  `;
-}
-
-function renderBracket() {
-  const bracket = window.WORLD_CUP_BRACKET;
-  if (!bracket || !els.bracketGrid) return;
-
-  els.bracketUpdatedAt.textContent = bracket.source === "demo"
-    ? "等待开赛"
-    : `更新：${formatDate(bracket.updatedAt)}`;
-
-  els.bracketGrid.innerHTML = bracket.rounds.map((round) => `
-    <section class="bracket-round">
-      <h4>${round.name}</h4>
-      <div class="bracket-matches">
-        ${round.matches.map((match) => `
-          <article class="bracket-match ${match.status}">
-            <div class="bracket-match-meta">
-              <span>${match.date}</span>
-              <strong>${match.status === "live" ? `LIVE ${match.minute || ""}` : match.id}</strong>
-            </div>
-            ${match.teams.map(renderBracketTeam).join("")}
-          </article>
-        `).join("")}
-      </div>
-    </section>
-  `).join("");
-}
-
 function renderMatchEvents(events) {
   if (!events.length) return '<p class="live-empty-detail">暂无关键事件</p>';
   return `
@@ -953,7 +920,11 @@ function renderSmartMoneyCustomWallets() {
 
 function renderSmartMoney(payload) {
   if (!els.smartMoneyRanking || !els.smartMoneyTrades) return;
-  els.smartMoneyUpdatedAt.textContent = `更新：${new Intl.DateTimeFormat("zh-CN", { timeStyle: "medium" }).format(new Date(payload.updatedAt))}`;
+  const updateTime = new Intl.DateTimeFormat("zh-CN", { timeStyle: "medium" }).format(new Date(payload.updatedAt));
+  els.smartMoneyUpdatedAt.textContent = payload.stale ? `快照：${updateTime}` : `更新：${updateTime}`;
+  if (payload.stale) {
+    els.smartMoneyMessage.textContent = "数据源波动，正在展示最近快照。";
+  }
   els.smartMoneyRanking.innerHTML = payload.ranking.map((wallet) => `
     <article class="smart-wallet-rank">
       <b>${wallet.rank}</b>

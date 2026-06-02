@@ -114,36 +114,6 @@ function renderGroups() {
   `).join("");
 }
 
-function renderBracketTeam(team) {
-  return `
-    <div class="bracket-team ${team.state}">
-      <span>${team.name}</span>
-      <strong>${team.score ?? "-"}</strong>
-    </div>
-  `;
-}
-
-function renderBracket() {
-  const bracket = window.WORLD_CUP_BRACKET;
-  document.querySelector("#portalBracketUpdatedAt").textContent = `更新：${formatDate(bracket.updatedAt)}`;
-  document.querySelector("#portalBracketGrid").innerHTML = bracket.rounds.map((round) => `
-    <section class="bracket-round">
-      <h4>${round.name}</h4>
-      <div class="bracket-matches">
-        ${round.matches.map((match) => `
-          <article class="bracket-match ${match.status}">
-            <div class="bracket-match-meta">
-              <span>${match.date}</span>
-              <strong>${match.status === "live" ? match.minute : match.status}</strong>
-            </div>
-            ${match.teams.map(renderBracketTeam).join("")}
-          </article>
-        `).join("")}
-      </div>
-    </section>
-  `).join("");
-}
-
 function renderMvpHistory() {
   document.querySelector("#portalMvpGrid").innerHTML = [...MVP_WINNERS].reverse().map((winner) => `
     <article class="portal-mvp-card">
