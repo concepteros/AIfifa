@@ -4,7 +4,11 @@ const DEFAULT_POLYMARKET_QUERY = "2026 world cup winner";
 const SOLANA_USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 const SOLANA_USDC_RECIPIENT = "EwAh2VbsbgG2xWsFsDYMjmCUqq48cSkms1HATZDi3Vgq";
 const PREMIUM_PRICE_UNITS = 19_900_000n;
-const SOLANA_RPC_URL = "https://api.mainnet-beta.solana.com";
+const SOLANA_RPC_URL = "https://mainnet.helius-rpc.com/?api-key=46b445f1-d996-4af0-97a9-e41cd82aef93";
+const FRONTEND_ACCESS_KEY = "fifa2026PremiumAccess";
+const FRONTEND_ACCESS_COOKIE = "fifa2026_frontend_access";
+const FRONTEND_ACCESS_MAX_AGE = 365 * 24 * 60 * 60;
+const DEVELOPER_WALLETS = new Set([SOLANA_USDC_RECIPIENT]);
 const TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 const ASSOCIATED_TOKEN_PROGRAM_ID = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
 const TEAM_ALIASES = {
@@ -378,6 +382,11 @@ function renderWalletState() {
 
 function renderAccessPayment() {
   if (!walletState.address) return;
+  if (DEVELOPER_WALLETS.has(walletState.address)) {
+    grantFrontendAccess(walletState.address);
+    unlockAccess("开发者模式已启用。");
+    return;
+  }
   els.accessWalletOptions.hidden = true;
   els.accessPayment.hidden = false;
   els.accessWalletAddress.textContent = shortAddress(walletState.address);
@@ -417,6 +426,40 @@ function unlockAccess(message = "") {
   startPremiumDataSync();
 }
 
+function accessCookieValue(walletAddress) {
+  return encodeURIComponent(`${walletAddress}:${Date.now()}`);
+}
+
+function grantFrontendAccess(walletAddress) {
+  const payload = {
+    grantedAt: new Date().toISOString(),
+    walletAddress
+  };
+  try {
+    localStorage.setItem(FRONTEND_ACCESS_KEY, JSON.stringify(payload));
+  } catch {
+    // Cookie access still allows the server-hosted pages to load.
+  }
+  const secure = location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${FRONTEND_ACCESS_COOKIE}=${accessCookieValue(walletAddress)}; Path=/; Max-Age=${FRONTEND_ACCESS_MAX_AGE}; SameSite=Strict${secure}`;
+}
+
+function clearFrontendAccess() {
+  try {
+    localStorage.removeItem(FRONTEND_ACCESS_KEY);
+  } catch {}
+  document.cookie = `${FRONTEND_ACCESS_COOKIE}=; Path=/; Max-Age=0; SameSite=Strict`;
+}
+
+function storedFrontendAccess() {
+  try {
+    const payload = JSON.parse(localStorage.getItem(FRONTEND_ACCESS_KEY) || "null");
+    return payload?.walletAddress ? payload : null;
+  } catch {
+    return null;
+  }
+}
+
 function lockAccessGate(message = "请连接已解锁钱包，或连接钱包完成支付。") {
   accessState.unlocked = false;
   stopPaymentPolling();
@@ -427,18 +470,6 @@ function lockAccessGate(message = "请连接已解锁钱包，或连接钱包完
   els.accessPayment.hidden = true;
   setAccessStep("wallet");
   setAccessMessage(message);
-}
-
-async function readApiJson(response, fallbackMessage) {
-  const contentType = response.headers.get("content-type") || "";
-  if (!contentType.includes("application/json")) {
-    throw new Error(`${fallbackMessage}：后端接口未返回 JSON。请确认 Node 服务已部署并正确代理 /api 请求。`);
-  }
-  try {
-    return await response.json();
-  } catch {
-    throw new Error(`${fallbackMessage}：后端返回了无效 JSON。`);
-  }
 }
 
 function associatedTokenAddress(owner, mint) {
@@ -491,6 +522,37 @@ function createTransferInstruction(owner, mint, sourceAta, recipientAta) {
   });
 }
 
+function payerFromParsedTransaction(transaction) {
+  return transaction?.transaction?.message?.accountKeys
+    ?.find((account) => account.signer)
+    ?.pubkey?.toString?.() || "";
+}
+
+function hasExpectedUsdcTransfer(transaction) {
+  return (transaction?.meta?.postTokenBalances || []).some((post) => {
+    const pre = transaction.meta?.preTokenBalances?.find(
+      (item) => item.accountIndex === post.accountIndex
+    );
+    const delta = BigInt(post.uiTokenAmount.amount) - BigInt(pre?.uiTokenAmount.amount || "0");
+    return (
+      post.mint === SOLANA_USDC_MINT &&
+      post.owner === SOLANA_USDC_RECIPIENT &&
+      delta >= PREMIUM_PRICE_UNITS
+    );
+  });
+}
+
+async function verifyPaymentOnFrontend(connection, signature, expectedWallet) {
+  const transaction = await connection.getParsedTransaction(signature, {
+    commitment: "finalized",
+    maxSupportedTransactionVersion: 0
+  });
+  if (!transaction || transaction.meta?.err || !hasExpectedUsdcTransfer(transaction)) {
+    return false;
+  }
+  return payerFromParsedTransaction(transaction) === expectedWallet;
+}
+
 async function payWithConnectedWallet() {
   if (!walletState.provider || !walletState.address) {
     setAccessMessage("请先连接钱包。");
@@ -535,17 +597,10 @@ async function payWithConnectedWallet() {
 
     setAccessMessage("交易已发送，正在等待链上确认并自动解锁...");
     await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, "confirmed");
-    const verifyResponse = await fetch("/api/payments/confirm-solana", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        signature,
-        walletAddress: walletState.address
-      })
-    });
-    const verification = await readApiJson(verifyResponse, "支付验证失败");
-    if (!verifyResponse.ok) throw new Error(verification.error || "支付验证失败。");
-    unlockAccess(verification.developerMode ? "开发者模式已启用。" : "支付已确认，高级权限已解锁。");
+    const verified = await verifyPaymentOnFrontend(connection, signature, walletState.address);
+    if (!verified) throw new Error("链上未验证到 19.9 USDC 到账，请稍后重试。");
+    grantFrontendAccess(walletState.address);
+    unlockAccess("支付已通过 Solana RPC 验证，高级权限已解锁。");
   } catch (error) {
     console.warn(error);
     setAccessMessage(error.message || "支付未完成，请检查钱包余额后重试。");
@@ -567,7 +622,7 @@ function bindWalletAccountEvents() {
     walletState.address = address;
     renderWalletState();
     lockAccessGate("钱包账户已切换，请重新支付或等待自动查账。");
-    await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    clearFrontendAccess();
     if (!address) return;
     renderAccessPayment();
   };
@@ -655,25 +710,31 @@ async function checkPremiumAccess() {
   els.accessCheckButton.disabled = true;
 
   try {
-    const response = await fetch("/api/payments/status-solana", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        walletAddress: walletState.address
-      })
-    });
-    const payload = await readApiJson(response, "支付状态检查失败");
-    if (!response.ok) {
-      throw new Error(payload.error || "支付状态检查失败。");
+    const { Connection, PublicKey } = window.solanaWeb3 || {};
+    if (!Connection || !PublicKey) {
+      throw new Error("Solana 支付组件加载失败，请刷新页面后重试。");
     }
-    if (!payload.success) {
+    const connection = new Connection(SOLANA_RPC_URL, "confirmed");
+    const signatures = await connection.getSignaturesForAddress(
+      new PublicKey(walletState.address),
+      { limit: 20 },
+      "finalized"
+    );
+    let verified = false;
+    for (const item of signatures) {
+      if (item.err) continue;
+      verified = await verifyPaymentOnFrontend(connection, item.signature, walletState.address);
+      if (verified) break;
+    }
+    if (!verified) {
       setAccessMessage("暂未检测到到账。付款完成后系统会继续自动检查。");
       setAccessStep("payment");
       return;
     }
     if (checkedWallet !== walletState.address) return;
 
-    unlockAccess(payload.developerMode ? "开发者模式已启用。" : "支付已确认，高级权限已解锁。");
+    grantFrontendAccess(walletState.address);
+    unlockAccess("支付已通过 Solana RPC 验证，高级权限已解锁。");
   } catch (error) {
     console.warn(error);
     setAccessMessage(error.message || "支付状态检查失败，请稍后重试。");
@@ -706,21 +767,17 @@ async function disconnectWallet() {
   walletState.provider = null;
   walletState.address = "";
   walletState.name = "";
-  void fetch("/api/auth/logout", { method: "POST" });
+  clearFrontendAccess();
   renderWalletState();
   setWalletMessage("钱包已断开。");
   lockAccessGate();
 }
 
 async function restoreAuthorizedSession() {
-  try {
-    const response = await fetch("/api/auth/session", { headers: { Accept: "application/json" } });
-    const session = await readApiJson(response, "会话状态检查失败");
-    if (response.ok && session.authorized) {
-      unlockAccess(session.mode === "developer" ? "开发者模式已恢复。" : "高级权限已恢复。");
-    }
-  } catch (error) {
-    console.warn(error);
+  const access = storedFrontendAccess();
+  if (access) {
+    grantFrontendAccess(access.walletAddress);
+    unlockAccess("高级权限已恢复。");
   }
 }
 

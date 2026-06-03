@@ -2,7 +2,6 @@ const http = require("node:http");
 const crypto = require("node:crypto");
 const fs = require("node:fs/promises");
 const path = require("node:path");
-const { Connection, PublicKey } = require("@solana/web3.js");
 
 if (typeof process.loadEnvFile === "function") {
   try {
@@ -14,12 +13,7 @@ if (typeof process.loadEnvFile === "function") {
 
 const PORT = Number(process.env.PORT || 4173);
 const HOST = process.env.HOST || "0.0.0.0";
-const RPC_URL = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
-const RECIPIENT = new PublicKey(
-  process.env.MY_SOLANA_WALLET || "EwAh2VbsbgG2xWsFsDYMjmCUqq48cSkms1HATZDi3Vgq",
-).toBase58();
-const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
-const PREMIUM_PRICE_UNITS = 19_900_000n;
+const PAYMENT_RECIPIENT = process.env.MY_SOLANA_WALLET || "EwAh2VbsbgG2xWsFsDYMjmCUqq48cSkms1HATZDi3Vgq";
 const API_FOOTBALL_BASE_URL = "https://v3.football.api-sports.io";
 const API_FOOTBALL_KEY = process.env.API_FOOTBALL_KEY || "";
 const WORLD_CUP_LEAGUE_ID = "1";
@@ -37,19 +31,18 @@ const ESPN_WORLD_CUP_NEWS_URL = "https://site.api.espn.com/apis/site/v2/sports/s
 const SPORTS_NEWS_CACHE_MS = 10 * 60_000;
 const AUTH_SESSION_MS = 24 * 60 * 60_000;
 const AUTH_COOKIE = "fifa2026_session";
+const FRONTEND_ACCESS_COOKIE = "fifa2026_frontend_access";
 const AUTH_COOKIE_SECURE = process.env.NODE_ENV === "production" ? "; Secure" : "";
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex");
 const DEVELOPER_WALLETS = new Set(
-  (process.env.DEVELOPER_WALLETS || RECIPIENT)
+  (process.env.DEVELOPER_WALLETS || PAYMENT_RECIPIENT)
     .split(",")
     .map((address) => address.trim())
-    .filter(Boolean)
-    .map((address) => new PublicKey(address).toBase58()),
+    .filter(Boolean),
 );
 const ROOT = __dirname;
 const PROTECTED_ROOT = path.join(ROOT, "protected-pages");
 const DATA_ROOT = process.env.VERCEL ? path.join("/tmp", "fifa2026-data") : path.join(ROOT, "data");
-const PAYMENT_FILE = path.join(DATA_ROOT, "payments.json");
 const PREDICTION_FILE = path.join(DATA_ROOT, "predictions.json");
 const TEAM_CODES = new Set([
   "ALG", "ARG", "AUS", "AUT", "BEL", "BIH", "BRA", "CAN", "CIV", "COD", "COL", "CPV",
@@ -57,8 +50,6 @@ const TEAM_CODES = new Set([
   "IRQ", "JOR", "JPN", "KOR", "KSA", "MAR", "MEX", "NED", "NOR", "NZL", "PAN", "PAR",
   "POR", "QAT", "RSA", "SCO", "SEN", "SUI", "SWE", "TUN", "TUR", "URU", "USA", "UZB",
 ]);
-const connection = new Connection(RPC_URL, "confirmed");
-
 const MIME_TYPES = {
   ".css": "text/css; charset=utf-8",
   ".html": "text/html; charset=utf-8",
@@ -75,7 +66,6 @@ const PROTECTED_HTML = new Set([
   "team.html",
 ]);
 
-let paymentWriteQueue = Promise.resolve();
 let predictionWriteQueue = Promise.resolve();
 let footballCache = {
   expiresAt: 0,
@@ -150,6 +140,14 @@ function clearSessionCookie(response) {
 
 function isAuthorizedSession(session) {
   return session?.mode === "developer" || session?.mode === "premium";
+}
+
+function hasFrontendAccessCookie(request) {
+  return Boolean(parseCookies(request)[FRONTEND_ACCESS_COOKIE]);
+}
+
+function isAuthorizedRequest(request) {
+  return isAuthorizedSession(sessionFromRequest(request)) || hasFrontendAccessCookie(request);
 }
 
 async function readJsonBody(request) {
@@ -756,15 +754,6 @@ async function getLiveFootballData() {
   return payload;
 }
 
-async function readPayments() {
-  try {
-    return JSON.parse(await fs.readFile(PAYMENT_FILE, "utf8"));
-  } catch (error) {
-    if (error.code === "ENOENT") return [];
-    throw error;
-  }
-}
-
 function getAuthSession(request, response) {
   const session = sessionFromRequest(request);
   return json(response, 200, {
@@ -778,19 +767,6 @@ function getAuthSession(request, response) {
 function logoutWallet(response) {
   clearSessionCookie(response);
   return json(response, 200, { success: true });
-}
-
-async function recordPayment(payment) {
-  paymentWriteQueue = paymentWriteQueue.then(async () => {
-    const payments = await readPayments();
-    if (payments.some((item) => item.signature === payment.signature)) {
-      throw new Error("Transaction was already processed");
-    }
-    payments.push(payment);
-    await fs.mkdir(path.dirname(PAYMENT_FILE), { recursive: true });
-    await fs.writeFile(PAYMENT_FILE, `${JSON.stringify(payments, null, 2)}\n`, "utf8");
-  });
-  return paymentWriteQueue;
 }
 
 async function readPredictions() {
@@ -862,159 +838,6 @@ async function handlePredictions(request, response) {
   }
 }
 
-function findRecordedPayment(payments, payer) {
-  return payments.find((item) => item.payer === payer);
-}
-
-function payerFromTransaction(transaction) {
-  return transaction.transaction.message.accountKeys
-    .find((account) => account.signer)
-    ?.pubkey.toBase58();
-}
-
-function hasExpectedUsdcTransfer(transaction) {
-  return (transaction.meta?.postTokenBalances || []).some((post) => {
-    const pre = transaction.meta?.preTokenBalances?.find(
-      (item) => item.accountIndex === post.accountIndex,
-    );
-    const delta =
-      BigInt(post.uiTokenAmount.amount) -
-      BigInt(pre?.uiTokenAmount.amount || "0");
-
-    return (
-      post.mint === USDC_MINT &&
-      post.owner === RECIPIENT &&
-      delta >= PREMIUM_PRICE_UNITS
-    );
-  });
-}
-
-async function verifyTransaction(signature, expectedWallet) {
-  const transaction = await connection.getParsedTransaction(signature, {
-    commitment: "finalized",
-    maxSupportedTransactionVersion: 0,
-  });
-
-  if (!transaction || transaction.meta?.err || !hasExpectedUsdcTransfer(transaction)) {
-    return null;
-  }
-
-  const payer = payerFromTransaction(transaction);
-  if (!payer || payer !== expectedWallet) return null;
-
-  return {
-    amount: "19.9",
-    confirmedAt: new Date().toISOString(),
-    payer,
-    recipient: RECIPIENT,
-    signature,
-    status: "confirmed",
-    token: "USDC",
-  };
-}
-
-async function confirmSolanaPayment(request, response) {
-  try {
-    const { signature, walletAddress } = await readJsonBody(request);
-    if (!signature || !walletAddress) {
-      return json(response, 400, { error: "Missing signature or walletAddress" });
-    }
-
-    const normalizedWallet = new PublicKey(walletAddress).toBase58();
-    if (DEVELOPER_WALLETS.has(normalizedWallet)) {
-      setSessionCookie(response, normalizedWallet, "developer");
-      return json(response, 200, {
-        success: true,
-        developerMode: true,
-        message: "Developer access is active",
-      });
-    }
-
-    const processed = await readPayments();
-    if (processed.some((item) => item.signature === signature)) {
-      return json(response, 409, { error: "Transaction was already processed" });
-    }
-
-    const payment = await verifyTransaction(signature, normalizedWallet);
-    if (!payment) {
-      return json(response, 400, { error: "Expected finalized 19.9 USDC payment was not found" });
-    }
-
-    await recordPayment(payment);
-    setSessionCookie(response, normalizedWallet, "premium");
-
-    return json(response, 200, {
-      success: true,
-      amount: "19.9",
-      message: "Payment verified. Permanent access is active.",
-    });
-  } catch (error) {
-    console.error("Solana payment verification failed:", error);
-    return json(response, 400, { error: error.message || "Payment verification failed" });
-  }
-}
-
-async function checkSolanaPaymentStatus(request, response) {
-  try {
-    const { walletAddress } = await readJsonBody(request);
-    if (!walletAddress) {
-      return json(response, 400, { error: "Missing walletAddress" });
-    }
-
-    const normalizedWallet = new PublicKey(walletAddress).toBase58();
-    if (DEVELOPER_WALLETS.has(normalizedWallet)) {
-      setSessionCookie(response, normalizedWallet, "developer");
-      return json(response, 200, {
-        success: true,
-        developerMode: true,
-        message: "Developer access is active",
-      });
-    }
-
-    const processed = await readPayments();
-    const existing = findRecordedPayment(processed, normalizedWallet);
-    if (existing) {
-      setSessionCookie(response, normalizedWallet, "premium");
-      return json(response, 200, {
-        success: true,
-        amount: existing.amount,
-        signature: existing.signature,
-      });
-    }
-
-    const signatures = await connection.getSignaturesForAddress(
-      new PublicKey(normalizedWallet),
-      { limit: 20 },
-      "finalized",
-    );
-
-    for (const item of signatures) {
-      if (item.err) continue;
-      if (processed.some((payment) => payment.signature === item.signature)) continue;
-
-      const payment = await verifyTransaction(item.signature, normalizedWallet);
-      if (!payment) continue;
-
-      await recordPayment(payment);
-      setSessionCookie(response, normalizedWallet, "premium");
-      return json(response, 200, {
-        success: true,
-        amount: payment.amount,
-        signature: payment.signature,
-      });
-    }
-
-    return json(response, 200, {
-      success: false,
-      pending: true,
-      message: "Payment has not been detected yet",
-    });
-  } catch (error) {
-    console.error("Solana payment status check failed:", error);
-    return json(response, 400, { error: error.message || "Payment status check failed" });
-  }
-}
-
 async function serveStatic(request, response) {
   const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
   const relativePath = decodeURIComponent(url.pathname === "/" ? "index.html" : url.pathname.slice(1));
@@ -1036,7 +859,7 @@ async function serveStatic(request, response) {
     response.end("Forbidden");
     return;
   }
-  if (protectedPage && !isAuthorizedSession(sessionFromRequest(request))) {
+  if (protectedPage && !isAuthorizedRequest(request)) {
     response.writeHead(302, { Location: "/index.html" });
     response.end();
     return;
@@ -1060,7 +883,7 @@ async function handleRequest(request, response) {
   if (request.method === "GET" && request.url === "/api/health") {
     return json(response, 200, {
       ok: true,
-      recipient: RECIPIENT,
+      recipient: PAYMENT_RECIPIENT,
       token: "USDC",
       amount: "19.9",
     });
@@ -1076,8 +899,7 @@ async function handleRequest(request, response) {
 
   if (
     request.url.startsWith("/api/") &&
-    !request.url.startsWith("/api/payments/") &&
-    !isAuthorizedSession(sessionFromRequest(request))
+    !isAuthorizedRequest(request)
   ) {
     return json(response, 401, { error: "Premium wallet session required" });
   }
@@ -1142,14 +964,6 @@ async function handleRequest(request, response) {
       console.error("Polymarket smart money failed:", error);
       return json(response, 502, { error: "聪明钱数据暂时不可用" });
     }
-  }
-
-  if (request.method === "POST" && request.url === "/api/payments/confirm-solana") {
-    return confirmSolanaPayment(request, response);
-  }
-
-  if (request.method === "POST" && request.url === "/api/payments/status-solana") {
-    return checkSolanaPaymentStatus(request, response);
   }
 
   if ((request.method === "GET" || request.method === "POST") && request.url.startsWith("/api/predictions")) {
