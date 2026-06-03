@@ -1,0 +1,46 @@
+{
+  "version": 2,
+  "functions": {
+    "api/**/*.js": {
+      "includeFiles": "protected-pages/**",
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/groups.html",
+      "destination": "/api/protected?file=groups.html"
+    },
+    {
+      "source": "/mvp-history.html",
+      "destination": "/api/protected?file=mvp-history.html"
+    },
+    {
+      "source": "/predictions.html",
+      "destination": "/api/protected?file=predictions.html"
+    },
+    {
+      "source": "/semifinals.html",
+      "destination": "/api/protected?file=semifinals.html"
+    },
+    {
+      "source": "/team.html",
+      "destination": "/api/protected?file=team.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        }
+      ]
+    }
+  ]
+}

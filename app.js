@@ -650,7 +650,17 @@ async function payWithConnectedWallet() {
 
     setAccessMessage("交易已发送，正在等待链上确认并自动解锁...");
     await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, "confirmed");
-    await checkPremiumAccess();
+    const verifyResponse = await fetch("/api/payments/confirm-solana", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        signature,
+        walletAddress: walletState.address
+      })
+    });
+    const verification = await readApiJson(verifyResponse, "支付验证失败");
+    if (!verifyResponse.ok) throw new Error(verification.error || "支付验证失败。");
+    unlockAccess(verification.developerMode ? "开发者模式已启用。" : "支付已确认，高级权限已解锁。");
   } catch (error) {
     console.warn(error);
     setAccessMessage(error.message || "支付未完成，请检查钱包余额后重试。");

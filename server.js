@@ -51,8 +51,10 @@ const DEVELOPER_WALLETS = new Set(
     .map((address) => new PublicKey(address).toBase58()),
 );
 const ROOT = __dirname;
-const PAYMENT_FILE = path.join(ROOT, "data", "payments.json");
-const PREDICTION_FILE = path.join(ROOT, "data", "predictions.json");
+const PROTECTED_ROOT = path.join(ROOT, "protected-pages");
+const DATA_ROOT = process.env.VERCEL ? path.join("/tmp", "fifa2026-data") : path.join(ROOT, "data");
+const PAYMENT_FILE = path.join(DATA_ROOT, "payments.json");
+const PREDICTION_FILE = path.join(DATA_ROOT, "predictions.json");
 const TEAM_CODES = new Set([
   "ALG", "ARG", "AUS", "AUT", "BEL", "BIH", "BRA", "CAN", "CIV", "COD", "COL", "CPV",
   "CRO", "CUW", "CZE", "ECU", "EGY", "ENG", "ESP", "FRA", "GER", "GHA", "HAI", "IRN",
@@ -98,7 +100,6 @@ let smartMoneyRankingCache = {
 let smartMoneyRankingPromise = null;
 const smartMoneyFeedCache = new Map();
 const smartMoneyFeedPromises = new Map();
-const walletChallenges = new Map();
 
 function json(response, status, payload) {
   response.writeHead(status, {
@@ -120,6 +121,24 @@ function signedSession(walletAddress, mode) {
   }));
   const signature = crypto.createHmac("sha256", SESSION_SECRET).update(payload).digest("base64url");
   return `${payload}.${signature}`;
+}
+
+function signedChallengeToken(challenge) {
+  const payload = base64Url(JSON.stringify(challenge));
+  const signature = crypto.createHmac("sha256", SESSION_SECRET).update(payload).digest("base64url");
+  return `${payload}.${signature}`;
+}
+
+function challengeFromToken(token) {
+  try {
+    const [payload, signature] = String(token || "").split(".");
+    if (!payload || !signature) return null;
+    const expected = crypto.createHmac("sha256", SESSION_SECRET).update(payload).digest("base64url");
+    if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
+    return JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+  } catch {
+    return null;
+  }
 }
 
 function parseCookies(request) {
@@ -809,19 +828,15 @@ async function createWalletChallenge(request, response) {
   try {
     const { walletAddress } = await readJsonBody(request);
     const normalizedWallet = new PublicKey(walletAddress).toBase58();
-    walletChallenges.forEach((challenge, id) => {
-      if (challenge.expiresAt <= Date.now()) walletChallenges.delete(id);
-    });
-    const challengeId = crypto.randomUUID();
     const nonce = crypto.randomBytes(18).toString("base64url");
-    walletChallenges.set(challengeId, {
+    const challenge = {
       expiresAt: Date.now() + AUTH_CHALLENGE_MS,
       message: walletLoginMessage(normalizedWallet, nonce),
       walletAddress: normalizedWallet,
-    });
+    };
     return json(response, 200, {
-      challengeId,
-      message: walletChallenges.get(challengeId).message,
+      challengeId: signedChallengeToken(challenge),
+      message: challenge.message,
     });
   } catch {
     return json(response, 400, { error: "Invalid wallet address" });
@@ -832,8 +847,7 @@ async function loginWithWallet(request, response) {
   try {
     const { challengeId, signature, walletAddress } = await readJsonBody(request);
     const normalizedWallet = new PublicKey(walletAddress).toBase58();
-    const challenge = walletChallenges.get(challengeId);
-    walletChallenges.delete(challengeId);
+    const challenge = challengeFromToken(challengeId);
     const signatureBytes = decodeWalletSignature(signature);
     if (
       !challenge ||
@@ -1116,16 +1130,25 @@ async function checkSolanaPaymentStatus(request, response) {
 async function serveStatic(request, response) {
   const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
   const relativePath = decodeURIComponent(url.pathname === "/" ? "index.html" : url.pathname.slice(1));
-  const filePath = path.resolve(ROOT, relativePath);
+  const protectedPage = PROTECTED_HTML.has(relativePath);
+  const filePath = protectedPage
+    ? path.resolve(PROTECTED_ROOT, relativePath)
+    : path.resolve(ROOT, relativePath);
 
   const blockedDependency = relativePath.startsWith("node_modules/");
+  const blockedProtectedSource = relativePath.startsWith("protected-pages/");
 
-  if (!filePath.startsWith(ROOT) || relativePath.startsWith("data/") || blockedDependency) {
+  if (
+    !filePath.startsWith(protectedPage ? PROTECTED_ROOT : ROOT) ||
+    relativePath.startsWith("data/") ||
+    blockedDependency ||
+    blockedProtectedSource
+  ) {
     response.writeHead(403);
     response.end("Forbidden");
     return;
   }
-  if (PROTECTED_HTML.has(relativePath) && !isAuthorizedSession(sessionFromRequest(request))) {
+  if (protectedPage && !isAuthorizedSession(sessionFromRequest(request))) {
     response.writeHead(302, { Location: "/index.html" });
     response.end();
     return;
@@ -1145,7 +1168,7 @@ async function serveStatic(request, response) {
   }
 }
 
-const server = http.createServer(async (request, response) => {
+async function handleRequest(request, response) {
   if (request.method === "GET" && request.url === "/api/health") {
     return json(response, 200, {
       ok: true,
@@ -1262,8 +1285,15 @@ const server = http.createServer(async (request, response) => {
   }
 
   return serveStatic(request, response);
-});
+}
 
-server.listen(PORT, HOST, () => {
-  console.log(`FIFA 2026 server running at http://${HOST}:${PORT}`);
-});
+if (require.main === module) {
+  const server = http.createServer(handleRequest);
+  server.listen(PORT, HOST, () => {
+    console.log(`FIFA 2026 server running at http://${HOST}:${PORT}`);
+  });
+}
+
+module.exports = {
+  handleRequest,
+};
