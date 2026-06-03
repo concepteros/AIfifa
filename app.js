@@ -67,9 +67,6 @@ const els = {
   walletMessage: document.querySelector("#walletMessage"),
   accessGate: document.querySelector("#accessGate"),
   accessWalletOptions: document.querySelector("#accessWalletOptions"),
-  accessSignature: document.querySelector("#accessSignature"),
-  accessSignatureWalletAddress: document.querySelector("#accessSignatureWalletAddress"),
-  accessSignButton: document.querySelector("#accessSignButton"),
   accessPayment: document.querySelector("#accessPayment"),
   accessWalletAddress: document.querySelector("#accessWalletAddress"),
   accessPayButton: document.querySelector("#accessPayButton"),
@@ -83,9 +80,6 @@ const walletState = {
   name: "",
   accountChangedHandler: null,
   accountsChangedHandler: null,
-  authenticationInFlight: false,
-  challenge: null,
-  challengePromise: null,
   paymentCheckInFlight: false,
   paymentPoll: null
 };
@@ -384,9 +378,7 @@ function renderWalletState() {
 
 function renderAccessPayment() {
   if (!walletState.address) return;
-  clearWalletChallenge();
   els.accessWalletOptions.hidden = true;
-  els.accessSignature.hidden = true;
   els.accessPayment.hidden = false;
   els.accessWalletAddress.textContent = shortAddress(walletState.address);
   setAccessStep("payment");
@@ -405,22 +397,6 @@ function renderAccessPayment() {
   void checkPremiumAccess();
 }
 
-function renderAccessSignature() {
-  if (!walletState.address) return;
-  els.accessGate.hidden = false;
-  els.accessWalletOptions.hidden = true;
-  els.accessSignature.hidden = false;
-  els.accessPayment.hidden = true;
-  els.accessSignatureWalletAddress.textContent = shortAddress(walletState.address);
-  setAccessStep("wallet");
-  setAccessMessage("钱包已连接。请点击“签名验证钱包”，并在钱包弹窗中确认登录消息。");
-  void prepareWalletChallenge().catch((error) => {
-    console.warn(error);
-    clearWalletChallenge();
-    setAccessMessage(error.message || "登录挑战创建失败，请确认后端服务可用。");
-  });
-}
-
 function startPremiumDataSync() {
   void refreshData();
   void refreshLiveFootball();
@@ -434,7 +410,6 @@ function startPremiumDataSync() {
 }
 
 function unlockAccess(message = "") {
-  clearWalletChallenge();
   accessState.unlocked = true;
   stopPaymentPolling();
   els.accessGate.hidden = true;
@@ -449,24 +424,9 @@ function lockAccessGate(message = "请连接已解锁钱包，或连接钱包完
   smartMoneyState.eventSource = null;
   els.accessGate.hidden = false;
   els.accessWalletOptions.hidden = false;
-  els.accessSignature.hidden = true;
   els.accessPayment.hidden = true;
   setAccessStep("wallet");
   setAccessMessage(message);
-}
-
-function signatureToBase64(result) {
-  const signature = result?.signature || result;
-  if (typeof signature === "string") return signature;
-  const bytes = signature instanceof Uint8Array ? signature : new Uint8Array(signature || []);
-  let binary = "";
-  bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
-  return btoa(binary);
-}
-
-function clearWalletChallenge() {
-  walletState.challenge = null;
-  walletState.challengePromise = null;
 }
 
 async function readApiJson(response, fallbackMessage) {
@@ -478,81 +438,6 @@ async function readApiJson(response, fallbackMessage) {
     return await response.json();
   } catch {
     throw new Error(`${fallbackMessage}：后端返回了无效 JSON。`);
-  }
-}
-
-async function prepareWalletChallenge() {
-  if (!walletState.address) throw new Error("请先连接钱包。");
-  const challengeWallet = walletState.address;
-  if (
-    walletState.challenge?.walletAddress === challengeWallet &&
-    Date.now() - walletState.challenge.createdAt < 4 * 60_000
-  ) {
-    return walletState.challenge;
-  }
-  if (walletState.challengePromise) return walletState.challengePromise;
-
-  els.accessSignButton.disabled = true;
-  setAccessMessage("正在准备钱包签名请求...");
-  walletState.challengePromise = (async () => {
-    const challengeResponse = await fetch("/api/auth/challenge", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ walletAddress: challengeWallet })
-    });
-    const challenge = await readApiJson(challengeResponse, "登录挑战创建失败");
-    if (!challengeResponse.ok) throw new Error(challenge.error || "登录挑战创建失败。");
-    if (walletState.address !== challengeWallet) throw new Error("钱包地址已变化，请重新签名。");
-    walletState.challenge = {
-      ...challenge,
-      createdAt: Date.now(),
-      walletAddress: challengeWallet
-    };
-    setAccessMessage("签名请求已准备好。请点击“签名验证钱包”唤起钱包弹窗。");
-    return walletState.challenge;
-  })();
-
-  try {
-    return await walletState.challengePromise;
-  } finally {
-    walletState.challengePromise = null;
-    if (walletState.address === challengeWallet) els.accessSignButton.disabled = false;
-  }
-}
-
-async function authenticateConnectedWallet() {
-  if (walletState.authenticationInFlight) return;
-  if (!walletState.provider?.signMessage || !walletState.address) {
-    throw new Error("当前钱包不支持消息签名，无法验证钱包所有权。");
-  }
-  walletState.authenticationInFlight = true;
-  els.accessSignButton.disabled = true;
-  setAccessMessage("请在钱包中签名登录消息。本操作不会发起交易。");
-  try {
-    const challenge = await prepareWalletChallenge();
-    const signature = signatureToBase64(
-      await walletState.provider.signMessage(new TextEncoder().encode(challenge.message), "utf8")
-    );
-    clearWalletChallenge();
-    const loginResponse = await fetch("/api/auth/wallet-login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        challengeId: challenge.challengeId,
-        signature,
-        walletAddress: walletState.address
-      })
-    });
-    const login = await readApiJson(loginResponse, "钱包签名验证失败");
-    if (!loginResponse.ok) throw new Error(login.error || "钱包签名验证失败。");
-    if (login.authorized) {
-      unlockAccess(login.developerMode ? "开发者模式已启用。" : "高级权限已恢复。");
-      return;
-    }
-    renderAccessPayment();
-  } finally {
-    walletState.authenticationInFlight = false;
-    els.accessSignButton.disabled = false;
   }
 }
 
@@ -679,13 +564,12 @@ function bindWalletAccountEvents() {
   walletState.accountChangedHandler = async (publicKey) => {
     const address = publicKey?.toString?.() || "";
     if (address === walletState.address) return;
-    clearWalletChallenge();
     walletState.address = address;
     renderWalletState();
-    lockAccessGate("钱包账户已切换，请重新验证。");
+    lockAccessGate("钱包账户已切换，请重新支付或等待自动查账。");
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
     if (!address) return;
-    renderAccessSignature();
+    renderAccessPayment();
   };
   walletState.accountsChangedHandler = (accounts) => {
     const address = Array.isArray(accounts) ? accounts[0] || "" : "";
@@ -739,15 +623,15 @@ async function connectWallet(wallet) {
     if (walletState.address) {
       bindWalletAccountEvents();
       renderWalletState();
-      setWalletMessage("钱包已连接，请点击签名验证。");
-      renderAccessSignature();
+      setWalletMessage("钱包已连接，请直接发起支付交易。");
+      renderAccessPayment();
     }
   } catch (error) {
     console.warn(error);
     if (walletState.address) {
-      renderAccessSignature();
-      setAccessMessage(error.message || "签名未完成，请点击按钮重新发起验证。");
-      setWalletMessage("钱包已连接，等待签名验证。");
+      renderAccessPayment();
+      setAccessMessage(error.message || "钱包已连接，请直接发起支付交易。");
+      setWalletMessage("钱包已连接，请直接发起支付交易。");
     } else {
       setWalletMessage("连接已取消或失败，请重试。");
     }
@@ -822,7 +706,6 @@ async function disconnectWallet() {
   walletState.provider = null;
   walletState.address = "";
   walletState.name = "";
-  clearWalletChallenge();
   void fetch("/api/auth/logout", { method: "POST" });
   renderWalletState();
   setWalletMessage("钱包已断开。");
@@ -855,13 +738,6 @@ function setupWallet() {
   });
   els.accessCheckButton.addEventListener("click", checkPremiumAccess);
   els.accessPayButton.addEventListener("click", payWithConnectedWallet);
-  els.accessSignButton.addEventListener("click", () => {
-    authenticateConnectedWallet().catch((error) => {
-      console.warn(error);
-      renderAccessSignature();
-      setAccessMessage(error.message || "签名未完成，请重试。");
-    });
-  });
   document.addEventListener("click", (event) => {
     if (!event.target.closest(".wallet-control")) setWalletMenu(false);
   });

@@ -3,9 +3,6 @@ const crypto = require("node:crypto");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { Connection, PublicKey } = require("@solana/web3.js");
-const bs58Module = require("bs58");
-const nacl = require("tweetnacl");
-const bs58 = bs58Module.default || bs58Module;
 
 if (typeof process.loadEnvFile === "function") {
   try {
@@ -38,7 +35,6 @@ const SMART_MONEY_RANKING_CACHE_MS = 5 * 60_000;
 const SPORTS_NEWS_URL = "https://ok.surf/api/v1/news-section";
 const ESPN_WORLD_CUP_NEWS_URL = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/news";
 const SPORTS_NEWS_CACHE_MS = 10 * 60_000;
-const AUTH_CHALLENGE_MS = 5 * 60_000;
 const AUTH_SESSION_MS = 24 * 60 * 60_000;
 const AUTH_COOKIE = "fifa2026_session";
 const AUTH_COOKIE_SECURE = process.env.NODE_ENV === "production" ? "; Secure" : "";
@@ -123,24 +119,6 @@ function signedSession(walletAddress, mode) {
   return `${payload}.${signature}`;
 }
 
-function signedChallengeToken(challenge) {
-  const payload = base64Url(JSON.stringify(challenge));
-  const signature = crypto.createHmac("sha256", SESSION_SECRET).update(payload).digest("base64url");
-  return `${payload}.${signature}`;
-}
-
-function challengeFromToken(token) {
-  try {
-    const [payload, signature] = String(token || "").split(".");
-    if (!payload || !signature) return null;
-    const expected = crypto.createHmac("sha256", SESSION_SECRET).update(payload).digest("base64url");
-    if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
-    return JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
-  } catch {
-    return null;
-  }
-}
-
 function parseCookies(request) {
   return Object.fromEntries((request.headers.cookie || "")
     .split(";")
@@ -172,15 +150,6 @@ function clearSessionCookie(response) {
 
 function isAuthorizedSession(session) {
   return session?.mode === "developer" || session?.mode === "premium";
-}
-
-function requireWalletSession(request, response, walletAddress) {
-  const session = sessionFromRequest(request);
-  if (!session || session.walletAddress !== walletAddress) {
-    json(response, 401, { error: "Wallet authentication required" });
-    return null;
-  }
-  return session;
 }
 
 async function readJsonBody(request) {
@@ -796,85 +765,6 @@ async function readPayments() {
   }
 }
 
-function walletLoginMessage(walletAddress, nonce) {
-  return [
-    "FIFA 2026 Wallet Login",
-    `Wallet: ${walletAddress}`,
-    `Nonce: ${nonce}`,
-    "Sign this message to prove wallet ownership. This does not send a transaction.",
-  ].join("\n");
-}
-
-function decodeWalletSignature(signature) {
-  if (typeof signature !== "string") return null;
-  try {
-    const bytes = Buffer.from(signature, "base64");
-    if (bytes.length === nacl.sign.signatureLength) return bytes;
-  } catch {}
-  try {
-    const bytes = Buffer.from(bs58.decode(signature));
-    return bytes.length === nacl.sign.signatureLength ? bytes : null;
-  } catch {
-    return null;
-  }
-}
-
-async function accessModeForWallet(walletAddress) {
-  if (DEVELOPER_WALLETS.has(walletAddress)) return "developer";
-  return findRecordedPayment(await readPayments(), walletAddress) ? "premium" : "wallet";
-}
-
-async function createWalletChallenge(request, response) {
-  try {
-    const { walletAddress } = await readJsonBody(request);
-    const normalizedWallet = new PublicKey(walletAddress).toBase58();
-    const nonce = crypto.randomBytes(18).toString("base64url");
-    const challenge = {
-      expiresAt: Date.now() + AUTH_CHALLENGE_MS,
-      message: walletLoginMessage(normalizedWallet, nonce),
-      walletAddress: normalizedWallet,
-    };
-    return json(response, 200, {
-      challengeId: signedChallengeToken(challenge),
-      message: challenge.message,
-    });
-  } catch {
-    return json(response, 400, { error: "Invalid wallet address" });
-  }
-}
-
-async function loginWithWallet(request, response) {
-  try {
-    const { challengeId, signature, walletAddress } = await readJsonBody(request);
-    const normalizedWallet = new PublicKey(walletAddress).toBase58();
-    const challenge = challengeFromToken(challengeId);
-    const signatureBytes = decodeWalletSignature(signature);
-    if (
-      !challenge ||
-      challenge.expiresAt <= Date.now() ||
-      challenge.walletAddress !== normalizedWallet ||
-      !signatureBytes ||
-      !nacl.sign.detached.verify(
-        Buffer.from(challenge.message, "utf8"),
-        signatureBytes,
-        new PublicKey(normalizedWallet).toBytes(),
-      )
-    ) {
-      return json(response, 401, { error: "Wallet signature verification failed" });
-    }
-    const mode = await accessModeForWallet(normalizedWallet);
-    setSessionCookie(response, normalizedWallet, mode);
-    return json(response, 200, {
-      authorized: mode !== "wallet",
-      developerMode: mode === "developer",
-      mode,
-      walletAddress: normalizedWallet,
-    });
-  } catch {
-    return json(response, 400, { error: "Invalid wallet login payload" });
-  }
-}
-
 function getAuthSession(request, response) {
   const session = sessionFromRequest(request);
   return json(response, 200, {
@@ -1031,7 +921,6 @@ async function confirmSolanaPayment(request, response) {
     }
 
     const normalizedWallet = new PublicKey(walletAddress).toBase58();
-    if (!requireWalletSession(request, response, normalizedWallet)) return;
     if (DEVELOPER_WALLETS.has(normalizedWallet)) {
       setSessionCookie(response, normalizedWallet, "developer");
       return json(response, 200, {
@@ -1073,7 +962,6 @@ async function checkSolanaPaymentStatus(request, response) {
     }
 
     const normalizedWallet = new PublicKey(walletAddress).toBase58();
-    if (!requireWalletSession(request, response, normalizedWallet)) return;
     if (DEVELOPER_WALLETS.has(normalizedWallet)) {
       setSessionCookie(response, normalizedWallet, "developer");
       return json(response, 200, {
@@ -1176,14 +1064,6 @@ async function handleRequest(request, response) {
       token: "USDC",
       amount: "19.9",
     });
-  }
-
-  if (request.method === "POST" && request.url === "/api/auth/challenge") {
-    return createWalletChallenge(request, response);
-  }
-
-  if (request.method === "POST" && request.url === "/api/auth/wallet-login") {
-    return loginWithWallet(request, response);
   }
 
   if (request.method === "GET" && request.url === "/api/auth/session") {
