@@ -71,6 +71,10 @@ let footballCache = {
   expiresAt: 0,
   payload: null,
 };
+let polymarketWinnerCache = {
+  expiresAt: 0,
+  payload: null,
+};
 let polymarketGamesCache = {
   expiresAt: 0,
   payload: null,
@@ -295,10 +299,120 @@ function parseMaybeJson(value) {
   }
 }
 
+function normalizeMarketText(text) {
+  return String(text || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
 function asPercentage(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return null;
   return Math.max(0, Math.min(100, number <= 1 ? number * 100 : number));
+}
+
+function isWorldCupWinnerMarket(market) {
+  const text = normalizeMarketText([market.question, market.title, market.slug, market.description].join(" "));
+  return (
+    text.includes("world cup") &&
+    !text.includes(" group ") &&
+    (text.includes("winner") || text.includes("win") || text.includes("champion"))
+  );
+}
+
+function flattenSearchMarkets(searchPayload) {
+  const markets = [];
+  (searchPayload.events || []).forEach((event) => {
+    (event.markets || []).forEach((market) => {
+      markets.push({
+        ...market,
+        eventSlug: event.slug,
+        eventTitle: event.title,
+        eventVolume: event.volume || event.volume24hr,
+      });
+    });
+  });
+  (searchPayload.markets || []).forEach((market) => markets.push(market));
+  return markets.filter((market) => market && !market.closed && market.active !== false);
+}
+
+function formatWinnerMarket(market) {
+  const outcomes = parseMaybeJson(market.outcomes);
+  const prices = parseMaybeJson(market.outcomePrices);
+  return {
+    description: market.description || "",
+    eventSlug: market.eventSlug || "",
+    eventTitle: market.eventTitle || "",
+    eventVolume: Number(market.eventVolume || 0),
+    id: market.id,
+    outcomes: outcomes.map((outcome, index) => ({
+      label: String(outcome),
+      percentage: asPercentage(prices[index]),
+    })).filter((outcome) => outcome.percentage !== null),
+    question: market.question || market.title || "",
+    slug: market.slug || "",
+    title: market.title || "",
+    url: market.eventSlug && market.slug
+      ? `https://polymarket.com/event/${market.eventSlug}?marketSlug=${market.slug}&outcomeIndex=0`
+      : "https://polymarket.com/zh/sports/world-cup/games",
+    volume: Number(market.volumeNum || market.volume || market.eventVolume || 0),
+  };
+}
+
+async function getPolymarketWorldCupWinnerMarkets() {
+  if (polymarketWinnerCache.payload && polymarketWinnerCache.expiresAt > Date.now()) {
+    return polymarketWinnerCache.payload;
+  }
+
+  const searchUrl = new URL("/public-search", POLYMARKET_BASE_URL);
+  Object.entries({
+    events_status: "active",
+    keep_closed_markets: "0",
+    limit_per_type: "40",
+    q: "2026 world cup winner",
+    search_profiles: "false",
+    search_tags: "false",
+  }).forEach(([key, value]) => searchUrl.searchParams.set(key, value));
+
+  let lastError;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const response = await fetch(searchUrl, {
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (!response.ok) throw new Error(`Polymarket winner search ${response.status}`);
+      const payload = await response.json();
+      const markets = flattenSearchMarkets(payload)
+        .filter(isWorldCupWinnerMarket)
+        .map(formatWinnerMarket);
+      const winnerPayload = {
+        markets,
+        pollIntervalMs: POLYMARKET_CACHE_MS,
+        stale: false,
+        updatedAt: new Date().toISOString(),
+      };
+      polymarketWinnerCache = {
+        expiresAt: Date.now() + POLYMARKET_CACHE_MS,
+        payload: winnerPayload,
+      };
+      return winnerPayload;
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+    }
+  }
+
+  if (polymarketWinnerCache.payload) {
+    return {
+      ...polymarketWinnerCache.payload,
+      stale: true,
+    };
+  }
+  throw lastError;
 }
 
 function isWorldCupGameEvent(event) {
@@ -947,6 +1061,21 @@ async function handleRequest(request, response) {
         games: [],
         message: "等待开赛",
         pollIntervalMs: POLYMARKET_CACHE_MS,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+  }
+
+  if (request.method === "GET" && request.url === "/api/polymarket/world-cup-winner") {
+    try {
+      return json(response, 200, await getPolymarketWorldCupWinnerMarkets());
+    } catch (error) {
+      console.error("Polymarket World Cup winner markets failed:", error);
+      return json(response, 502, {
+        error: "盘口数据暂时不可用",
+        markets: [],
+        pollIntervalMs: POLYMARKET_CACHE_MS,
+        stale: true,
         updatedAt: new Date().toISOString(),
       });
     }

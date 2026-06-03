@@ -1,4 +1,3 @@
-const POLYMARKET_BASE_URL = "https://gamma-api.polymarket.com";
 const POLYMARKET_WORLD_CUP_URL = "https://polymarket.com/zh/sports/world-cup/games";
 const DEFAULT_POLYMARKET_QUERY = "2026 world cup winner";
 const SOLANA_USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
@@ -182,6 +181,7 @@ function isWinnerMarket(market) {
 }
 
 function marketUrl(market) {
+  if (market.url) return market.url;
   if (!market.eventSlug || !market.slug) return POLYMARKET_WORLD_CUP_URL;
   const url = new URL(`/event/${market.eventSlug}`, "https://polymarket.com");
   url.searchParams.set("marketSlug", market.slug);
@@ -206,6 +206,14 @@ function flattenMarkets(searchPayload) {
 }
 
 function pricesFromMarket(market) {
+  if (Array.isArray(market.outcomes) && typeof market.outcomes[0] === "object") {
+    return market.outcomes
+      .map((outcome) => ({
+        outcome: String(outcome.label || outcome.outcome || ""),
+        probability: asPercent(outcome.percentage)
+      }))
+      .filter((entry) => entry.outcome && entry.probability !== null);
+  }
   const outcomes = parseMaybeJson(market.outcomes);
   const prices = parseMaybeJson(market.outcomePrices);
   return outcomes
@@ -284,29 +292,21 @@ function applyPolymarketMarkets(markets) {
 }
 
 async function fetchPolymarketMarkets() {
-  const params = new URLSearchParams({
-    q: state.polymarket.query || DEFAULT_POLYMARKET_QUERY,
-    events_status: "active",
-    keep_closed_markets: "0",
-    limit_per_type: "20",
-    search_profiles: "false",
-    search_tags: "false"
-  });
-
-  const response = await fetch(`${POLYMARKET_BASE_URL}/public-search?${params.toString()}`, {
+  const response = await fetch("/api/polymarket/world-cup-winner", {
     headers: { Accept: "application/json" }
   });
 
   if (!response.ok) throw new Error(`Polymarket API ${response.status}`);
   const payload = await response.json();
-  const markets = flattenMarkets(payload).filter(isWinnerMarket);
+  const markets = payload.markets || [];
 
   if (!markets.length) {
     throw new Error("No World Cup winner markets found in Polymarket response");
   }
 
   state.polymarket.lastMarkets = markets;
-  state.polymarket.lastEventCount = (payload.events || []).length;
+  state.polymarket.lastEventCount = markets.length;
+  state.polymarket.pollIntervalMs = payload.pollIntervalMs || 30000;
   return markets;
 }
 
@@ -413,7 +413,7 @@ function startPremiumDataSync() {
   connectSmartMoneyStream();
   if (accessState.syncStarted) return;
   accessState.syncStarted = true;
-  setInterval(refreshData, 30000);
+  setInterval(refreshData, 15000);
   setInterval(refreshLiveFootball, 15000);
   setInterval(refreshSportsNews, 10 * 60 * 1000);
 }
