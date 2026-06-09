@@ -648,9 +648,9 @@ function renderContenders() {
           <span class="rank">${index + 1}</span>
           <div class="team-name">
             <strong>${teamLabel(team)}</strong>
-            <span>${team.code} · ${team.confederation} · ${team.form}</span>
+            <span>${team.code} - ${team.confederation} - ${team.form}</span>
           </div>
-          <div class="bar" aria-label="${team.name} 夺冠胜率 ${team.probability}%"><span style="width:${width}%"></span></div>
+          <div class="bar" aria-label="${team.name} win probability ${team.probability}%"><span style="width:${width}%"></span></div>
           <span class="probability">${team.probability.toFixed(1)}%</span>
         </div>
       `;
@@ -670,7 +670,7 @@ function renderTeams() {
               <span>${team.name}</span>
             </strong>
           </a>
-          <span>${team.code} · 小组 ${team.group}</span>
+          <span>${team.code} - Group ${team.group}</span>
         </div>
         <div class="team-meta">
           <span>${team.confederation}</span>
@@ -678,7 +678,7 @@ function renderTeams() {
           <span>${team.form}</span>
         </div>
         <a class="squad-link" href="./team.html?team=${encodeURIComponent(team.code)}">
-          查看完整 ${window.WORLD_CUP_SQUADS?.[team.code]?.length || team.players.length} 人名单
+          View full ${window.WORLD_CUP_SQUADS?.[team.code]?.length || team.players.length} player squad
         </a>
       </article>
     `)
@@ -723,7 +723,7 @@ function renderMvp() {
         <div class="mvp-top">
           <div class="team-name">
             <strong>${player.name}</strong>
-            <span>${player.team} · ${player.position}</span>
+            <span>${player.team} - ${player.position}</span>
           </div>
           <span class="tag">${player.rating.toFixed(1)}</span>
         </div>
@@ -734,13 +734,13 @@ function renderMvp() {
 }
 
 function renderMatchEvents(events) {
-  if (!events.length) return '<p class="live-empty-detail">暂无关键事件</p>';
+  if (!events.length) return '<p class="live-empty-detail">No key events yet</p>';
   return `
     <div class="live-events">
       ${events.slice(-5).reverse().map((event) => `
         <div>
           <strong>${event.time ?? "-"}'</strong>
-          <span>${event.team} · ${event.type}${event.detail ? ` · ${event.detail}` : ""}</span>
+          <span>${event.team} - ${event.type}${event.detail ? ` - ${event.detail}` : ""}</span>
           <small>${event.player || ""}</small>
         </div>
       `).join("")}
@@ -751,14 +751,14 @@ function renderMatchEvents(events) {
 function renderLiveMatches(payload) {
   if (!els.liveMatchList) return;
   els.footballUpdatedAt.textContent = payload.configured
-    ? `更新：${formatDate(payload.updatedAt)}`
-    : "等待开赛";
+    ? `Updated: ${formatDate(payload.updatedAt)}`
+    : "Waiting for kickoff";
 
   if (!payload.liveMatches.length) {
     els.liveMatchList.innerHTML = `
       <div class="live-empty">
-        <strong>等待开赛</strong>
-        <span>比赛开始后将每 15 秒自动刷新比分和事件。</span>
+        <strong>Waiting for kickoff</strong>
+        <span>Scores and events will refresh every 15 seconds after matches begin.</span>
       </div>
     `;
     return;
@@ -767,13 +767,13 @@ function renderLiveMatches(payload) {
   els.liveMatchList.innerHTML = payload.liveMatches.map((match) => `
     <article class="live-match-card">
       <div class="live-match-meta">
-        <span class="live-badge">${match.status} · ${match.elapsed ?? "-"}'</span>
-        <span>${match.round}${match.venue ? ` · ${match.venue}` : ""}</span>
+        <span class="live-badge">${match.status} - ${match.elapsed ?? "-"}'</span>
+        <span>${match.round}${match.venue ? ` - ${match.venue}` : ""}</span>
       </div>
       <div class="live-score">
-        <div><strong>${matchTeamLabel(match.home.name)}</strong><span>主队</span></div>
+        <div><strong>${matchTeamLabel(match.home.name)}</strong><span>Home</span></div>
         <b>${match.home.score ?? 0} - ${match.away.score ?? 0}</b>
-        <div><strong>${matchTeamLabel(match.away.name)}</strong><span>客队</span></div>
+        <div><strong>${matchTeamLabel(match.away.name)}</strong><span>Away</span></div>
       </div>
       ${renderMatchEvents(match.events)}
     </article>
@@ -783,11 +783,7 @@ function renderLiveMatches(payload) {
 function renderStandings(payload) {
   if (!els.standingsList) return;
   if (!payload.standings.length) {
-    els.standingsList.innerHTML = `
-      <p class="live-empty-detail">
-        等待开赛
-      </p>
-    `;
+    els.standingsList.innerHTML = '<p class="live-empty-detail">Waiting for kickoff</p>';
     return;
   }
 
@@ -829,8 +825,8 @@ async function refreshLiveFootball() {
 function renderSportsNews(payload) {
   if (!els.sportsNewsList || !els.sportsNewsUpdatedAt) return;
   els.sportsNewsUpdatedAt.textContent = payload.stale
-    ? "最近快照"
-    : `更新：${new Intl.DateTimeFormat("zh-CN", { timeStyle: "short" }).format(new Date(payload.updatedAt))}`;
+    ? "Recent snapshot"
+    : `Updated: ${new Intl.DateTimeFormat("zh-CN", { timeStyle: "short" }).format(new Date(payload.updatedAt))}`;
   els.sportsNewsList.innerHTML = payload.articles.length
     ? payload.articles.slice(0, 6).map((article) => `
       <article class="sports-news-card">
@@ -841,7 +837,7 @@ function renderSportsNews(payload) {
         </div>
       </article>
     `).join("")
-    : '<p class="live-empty-detail">体育新闻暂时不可用，请稍后重试。</p>';
+    : '<p class="live-empty-detail">Sports news is temporarily unavailable. Please try again later.</p>';
 }
 
 async function refreshSportsNews() {
@@ -868,7 +864,7 @@ function renderHistory() {
               <strong>${player.name}</strong>
               <span>${player.team}</span>
               <span>${player.role}</span>
-              <span>${player.years} · ${player.note}</span>
+              <span>${player.years} ? ${player.note}</span>
             </div>
           `).join("")}
       </div>
@@ -883,10 +879,10 @@ function renderHistory() {
         .sort((a, b) => b.year - a.year)
         .map((edition) => `
           <article class="edition-card">
-            <h4>${edition.year} · ${edition.host}</h4>
-            <p><strong>冠军：</strong>${edition.champion}</p>
-            <p><strong>亚军：</strong>${edition.runnerUp}</p>
-            <p><strong>队伍：</strong>${edition.teams}</p>
+            <h4>${edition.year} ? ${edition.host}</h4>
+            <p><strong>Champion: </strong>${edition.champion}</p>
+            <p><strong>Runner-up: </strong>${edition.runnerUp}</p>
+            <p><strong>Teams: </strong>${edition.teams}</p>
             <p>${edition.notableSquads}</p>
           </article>
         `).join("")}
@@ -895,7 +891,7 @@ function renderHistory() {
 }
 
 function renderMeta() {
-  els.updatedAt.textContent = `更新：${formatDate(state.data.meta.updatedAt)}`;
+  els.updatedAt.textContent = `Updated: ${formatDate(state.data.meta.updatedAt)}`;
   els.editionCount.textContent = state.data.historicalEditions.length;
 }
 
@@ -917,9 +913,9 @@ function refreshData() {
     ...state.data.meta,
     updatedAt: new Date().toISOString(),
     status: "local",
-    note: "????????"
+    note: "使用本地球队数据"
   };
-  setRefreshLabel("???????");
+  setRefreshLabel("本地数据已更新");
   render();
 }
 

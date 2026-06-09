@@ -122,56 +122,23 @@ window.WORLD_CUP_DATA = {
   }
 };
 
-const FLAG_EMOJI_BY_CODE = {
-  MEX: "🇲🇽",
-  RSA: "🇿🇦",
-  KOR: "🇰🇷",
-  CZE: "🇨🇿",
-  CAN: "🇨🇦",
-  BIH: "🇧🇦",
-  QAT: "🇶🇦",
-  SUI: "🇨🇭",
-  BRA: "🇧🇷",
-  MAR: "🇲🇦",
-  HAI: "🇭🇹",
-  SCO: "🏴",
-  USA: "🇺🇸",
-  PAR: "🇵🇾",
-  AUS: "🇦🇺",
-  TUR: "🇹🇷",
-  GER: "🇩🇪",
-  CUW: "🇨🇼",
-  CIV: "🇨🇮",
-  ECU: "🇪🇨",
-  NED: "🇳🇱",
-  JPN: "🇯🇵",
-  SWE: "🇸🇪",
-  TUN: "🇹🇳",
-  BEL: "🇧🇪",
-  EGY: "🇪🇬",
-  IRN: "🇮🇷",
-  NZL: "🇳🇿",
-  ESP: "🇪🇸",
-  CPV: "🇨🇻",
-  KSA: "🇸🇦",
-  URU: "🇺🇾",
-  FRA: "🇫🇷",
-  SEN: "🇸🇳",
-  IRQ: "🇮🇶",
-  NOR: "🇳🇴",
-  ARG: "🇦🇷",
-  ALG: "🇩🇿",
-  AUT: "🇦🇹",
-  JOR: "🇯🇴",
-  POR: "🇵🇹",
-  COD: "🇨🇩",
-  UZB: "🇺🇿",
-  COL: "🇨🇴",
-  ENG: "🏴",
-  CRO: "🇭🇷",
-  GHA: "🇬🇭",
-  PAN: "🇵🇦"
-};
+function iso2ToFlagEmoji(iso2) {
+  const code = String(iso2 || "").toUpperCase();
+  const subdivision = code.match(/^GB-(ENG|SCT)$/);
+  if (subdivision) {
+    const tag = `GB${subdivision[1]}`.toLowerCase();
+    return String.fromCodePoint(
+      0x1f3f4,
+      ...[...tag].map((letter) => 0xe0061 + letter.charCodeAt(0) - 97),
+      0xe007f
+    );
+  }
+  if (!/^[A-Z]{2}$/.test(code)) return "";
+  return [...code]
+    .map((letter) => 0x1f1e6 + letter.charCodeAt(0) - 65)
+    .map((point) => String.fromCodePoint(point))
+    .join("");
+}
 
 const WORLD_CUP_TEAM_SOURCE = [
   ["MEX", "1", "MX", "Mexico"],
@@ -237,7 +204,7 @@ window.WORLD_CUP_DATA.teams = window.WORLD_CUP_DATA.teams.map((team) => {
   return {
     ...team,
     ...source,
-    flagEmoji: FLAG_EMOJI_BY_CODE[team.code] || "",
+    flagEmoji: iso2ToFlagEmoji(source.iso2),
     flag: `https://flagcdn.com/w80/${source.iso2.toLowerCase()}.png`,
     sourceRepository: "https://github.com/rezarahiminia/worldcup2026"
   };

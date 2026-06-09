@@ -52,9 +52,7 @@
             <span>已连接</span>
             <strong id="accessWalletAddress"></strong>
           </div>
-          <button id="accessPayButton" class="access-pay-button" type="button">
-            支付 19.9 USDC
-          </button>
+          <button id="accessPayButton" class="access-pay-button" type="button">支付 19.9 USDC</button>
           <div class="access-waiting">
             <span class="access-spinner"></span>
             <div>
@@ -119,172 +117,170 @@
     </header>
 
     <div class="dashboard-shell">
-    <main>
-      <nav class="feature-nav" aria-label="赛事专区">
-        <a class="feature-nav-item groups" href="./groups.html">
-          <span>01</span>
-          <strong>小组赛</strong>
-          <small>即时比分与小组情况</small>
-        </a>
-        <a class="feature-nav-item semifinals" href="./semifinals.html">
-          <span>02</span>
-          <strong>半决赛</strong>
-          <small>赛程暂未开放</small>
-        </a>
-        <a class="feature-nav-item mvp" href="./mvp-history.html">
-          <span>03</span>
-          <strong>MVP 球员</strong>
-          <small>历届最有价值球员</small>
-        </a>
-        <a class="feature-nav-item predictions" href="./predictions.html">
-          <span>04</span>
-          <strong>你的预测</strong>
-          <small>参与冠军投票</small>
-        </a>
-      </nav>
+      <main>
+        <nav class="feature-nav" aria-label="赛事专区">
+          <a class="feature-nav-item groups" href="./groups.html">
+            <span>01</span>
+            <strong>小组赛</strong>
+            <small>即时比分与小组情况</small>
+          </a>
+          <a class="feature-nav-item semifinals" href="./semifinals.html">
+            <span>02</span>
+            <strong>半决赛</strong>
+            <small>赛程暂未开放</small>
+          </a>
+          <a class="feature-nav-item mvp" href="./mvp-history.html">
+            <span>03</span>
+            <strong>MVP 球员</strong>
+            <small>历届最有价值球员</small>
+          </a>
+          <a class="feature-nav-item predictions" href="./predictions.html">
+            <span>04</span>
+            <strong>你的预测</strong>
+            <small>参与冠军投票</small>
+          </a>
+        </nav>
 
-      <section class="hero">
-        <div class="hero-copy">
-          <p class="eyebrow">冠军胜率 · 球员库 · MVP · 历史阵容</p>
-          <h2>实时追踪世界杯夺冠胜率与球队资料。</h2>
-          <p>
-            页面自动在后台同步预测市场数据，并把价格映射成各队隐含胜率。预测竞猜2026世界杯，用CheckFIFA就够了
-          </p>
-        </div>
-        <div class="hero-panel">
-          <div>
-            <span class="metric-label">参赛队伍</span>
-            <strong>48</strong>
+        <section class="hero">
+          <div class="hero-copy">
+            <p class="eyebrow">冠军胜率 · 球员库 · MVP · 历史阵容</p>
+            <h2>实时追踪世界杯夺冠胜率与球队资料。</h2>
+            <p>页面自动在后台同步预测市场数据，并把价格映射成各队隐含胜率。预测竞猜2026世界杯，用CheckFIFA就够了</p>
           </div>
-          <div>
-            <span class="metric-label">小组</span>
-            <strong>12</strong>
+          <div class="hero-panel">
+            <div>
+              <span class="metric-label">参赛队伍</span>
+              <strong>48</strong>
+            </div>
+            <div>
+              <span class="metric-label">小组</span>
+              <strong>12</strong>
+            </div>
+            <div>
+              <span class="metric-label">历史届数</span>
+              <strong id="editionCount">-</strong>
+            </div>
           </div>
-          <div>
-            <span class="metric-label">历史届数</span>
-            <strong id="editionCount">-</strong>
-          </div>
-        </div>
-      </section>
+        </section>
 
-      <section class="panel watch-guide-panel">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Viewing Guide</p>
-            <h3>?????????</h3>
-          </div>
-          <span>???????????</span>
-        </div>
-        <div id="watchGuideCalendar" class="watch-guide"></div>
-      </section>
-
-      <section class="toolbar" aria-label="筛选工具">
-        <label class="search">
-          <span>搜索</span>
-          <input id="searchInput" type="search" placeholder="球队、球员、国家、年份" />
-        </label>
-        <label>
-          <span>小组</span>
-          <select id="groupFilter">
-            <option value="all">全部</option>
-          </select>
-        </label>
-        <label>
-          <span>排序</span>
-          <select id="sortSelect">
-            <option value="probability">夺冠胜率</option>
-            <option value="name">球队名称</option>
-            <option value="group">小组</option>
-          </select>
-        </label>
-        <button id="refreshButton" type="button">立即刷新</button>
-      </section>
-
-      <section class="layout">
-        <article class="panel contenders">
+        <section class="panel watch-guide-panel">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">Live Odds</p>
-              <h3>本届夺冠胜率</h3>
+              <p class="eyebrow">Viewing Guide</p>
+              <h3>观赛指南与赛程日历</h3>
             </div>
-            <span id="updatedAt"></span>
+            <span>时间以官方赛程日期为准</span>
           </div>
-          <div id="contendersList" class="contender-list"></div>
-        </article>
+          <div id="watchGuideCalendar" class="watch-guide"></div>
+        </section>
 
-        <article class="panel">
+        <section class="toolbar" aria-label="筛选工具">
+          <label class="search">
+            <span>搜索</span>
+            <input id="searchInput" type="search" placeholder="球队、球员、国家、年份" />
+          </label>
+          <label>
+            <span>小组</span>
+            <select id="groupFilter">
+              <option value="all">全部</option>
+            </select>
+          </label>
+          <label>
+            <span>排序</span>
+            <select id="sortSelect">
+              <option value="probability">夺冠胜率</option>
+              <option value="name">球队名称</option>
+              <option value="group">小组</option>
+            </select>
+          </label>
+          <button id="refreshButton" type="button">立即刷新</button>
+        </section>
+
+        <section class="layout">
+          <article class="panel contenders">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Live Odds</p>
+                <h3>本届夺冠胜率</h3>
+              </div>
+              <span id="updatedAt"></span>
+            </div>
+            <div id="contendersList" class="contender-list"></div>
+          </article>
+
+          <article class="panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Player Watch</p>
+                <h3>最有价值球员候选</h3>
+              </div>
+            </div>
+            <div id="mvpList" class="mvp-list"></div>
+          </article>
+        </section>
+
+        <section class="panel live-football-panel">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">Player Watch</p>
-              <h3>最有价值球员候选</h3>
+              <p class="eyebrow">API-Football Live</p>
+              <h3>世界杯实时比分</h3>
+            </div>
+            <span id="footballUpdatedAt">等待开赛</span>
+          </div>
+          <div class="live-football-layout">
+            <div>
+              <div id="liveMatchList" class="live-match-list"></div>
+            </div>
+            <aside>
+              <div class="live-side-heading">
+                <strong>小组积分榜</strong>
+                <span>15 秒轮询</span>
+              </div>
+              <div id="standingsList" class="standings-list"></div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Sports News</p>
+              <h3>体育新闻快讯</h3>
+            </div>
+            <span id="sportsNewsUpdatedAt">正在更新...</span>
+          </div>
+          <div id="sportsNewsList" class="sports-news-grid">
+            <p class="live-empty-detail">正在获取最新体育新闻...</p>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Teams</p>
+              <h3>本届队伍与球员信息</h3>
+            </div>
+            <span class="hint">胜率为本地数据估算，正式数据上线后会继续同步。</span>
+          </div>
+          <div id="teamGrid" class="team-grid"></div>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Archive</p>
+              <h3>往届世界杯队伍与球员信息</h3>
+            </div>
+            <div class="segmented" role="tablist" aria-label="历史视图">
+              <button class="active" data-history-view="editions" type="button">届次</button>
+              <button data-history-view="players" type="button">球员</button>
             </div>
           </div>
-          <div id="mvpList" class="mvp-list"></div>
-        </article>
-      </section>
-
-      <section class="panel live-football-panel">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">API-Football Live</p>
-            <h3>世界杯实时比分</h3>
-          </div>
-          <span id="footballUpdatedAt">等待开赛</span>
-        </div>
-        <div class="live-football-layout">
-          <div>
-            <div id="liveMatchList" class="live-match-list"></div>
-          </div>
-          <aside>
-            <div class="live-side-heading">
-              <strong>小组积分榜</strong>
-              <span>15 秒轮询</span>
-            </div>
-            <div id="standingsList" class="standings-list"></div>
-          </aside>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Sports News</p>
-            <h3>体育新闻快讯</h3>
-          </div>
-          <span id="sportsNewsUpdatedAt">正在更新...</span>
-        </div>
-        <div id="sportsNewsList" class="sports-news-grid">
-          <p class="live-empty-detail">正在获取最新体育新闻...</p>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Teams</p>
-            <h3>本届队伍与球员信息</h3>
-          </div>
-          <span class="hint">胜率为市场隐含概率；未匹配队伍保留本地估算</span>
-        </div>
-        <div id="teamGrid" class="team-grid"></div>
-      </section>
-
-      <section class="panel">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Archive</p>
-            <h3>往届世界杯队伍与球员信息</h3>
-          </div>
-          <div class="segmented" role="tablist" aria-label="历史视图">
-            <button class="active" data-history-view="editions" type="button">届次</button>
-            <button data-history-view="players" type="button">球员</button>
-          </div>
-        </div>
-        <div id="historyContent"></div>
-      </section>
-    </main>
-
+          <div id="historyContent"></div>
+        </section>
+      </main>
     </div>
+
     <footer>
       <span>本页不展示博彩市场内容，球队胜率为本地数据估算。</span>
     </footer>

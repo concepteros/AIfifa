@@ -2,6 +2,7 @@ const page = document.body.dataset.portalPage;
 const POLL_INTERVAL_MS = 15_000;
 const PREDICTION_POLL_INTERVAL_MS = 10_000;
 let fallbackVoterId = "";
+
 const MVP_WINNERS = [
   { year: 1978, name: "Mario Kempes", team: "Argentina" },
   { year: 1982, name: "Paolo Rossi", team: "Italy" },
@@ -22,16 +23,6 @@ function formatDate(value) {
     dateStyle: "medium",
     timeStyle: "short"
   }).format(new Date(value));
-}
-
-function escapeHtml(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (character) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#039;"
-  })[character]);
 }
 
 function normalizeTeamName(value) {
@@ -61,7 +52,7 @@ function matchTeamLabel(name) {
   return team ? teamLabel(team) : name;
 }
 
-function renderEvents(events) {
+function renderEvents(events = []) {
   if (!events.length) return '<p class="live-empty-detail">暂无关键事件</p>';
   return `
     <div class="live-events">
@@ -129,13 +120,17 @@ async function refreshLiveMatches() {
   }
 }
 
-function renderGroups() {
-  const target = document.querySelector("#portalGroups");
-  const groups = window.WORLD_CUP_DATA.teams.reduce((result, team) => {
+function groupedTeams() {
+  return window.WORLD_CUP_DATA.teams.reduce((result, team) => {
     (result[team.group] ||= []).push(team);
     return result;
   }, {});
-  target.innerHTML = Object.entries(groups).map(([group, teams]) => `
+}
+
+function renderGroups() {
+  const target = document.querySelector("#portalGroups");
+  if (!target) return;
+  target.innerHTML = Object.entries(groupedTeams()).map(([group, teams]) => `
     <article class="portal-group">
       <h3>小组 ${group}</h3>
       ${teams.map((team) => `
@@ -153,50 +148,11 @@ function renderGroups() {
 
 function groupScheduleDate(group, matchday) {
   const dates = {
-    1: {
-      A: "Jun 11",
-      B: "Jun 12",
-      C: "Jun 13",
-      D: "Jun 12",
-      E: "Jun 14",
-      F: "Jun 14",
-      G: "Jun 15",
-      H: "Jun 15",
-      I: "Jun 16",
-      J: "Jun 16",
-      K: "Jun 17",
-      L: "Jun 17"
-    },
-    2: {
-      A: "Jun 18",
-      B: "Jun 18",
-      C: "Jun 19",
-      D: "Jun 19",
-      E: "Jun 20",
-      F: "Jun 20",
-      G: "Jun 21",
-      H: "Jun 21",
-      I: "Jun 22",
-      J: "Jun 22",
-      K: "Jun 23",
-      L: "Jun 23"
-    },
-    3: {
-      A: "Jun 24",
-      B: "Jun 24",
-      C: "Jun 24",
-      D: "Jun 25",
-      E: "Jun 25",
-      F: "Jun 25",
-      G: "Jun 26",
-      H: "Jun 26",
-      I: "Jun 26",
-      J: "Jun 27",
-      K: "Jun 27",
-      L: "Jun 27"
-    }
+    1: { A: "Jun 11", B: "Jun 12", C: "Jun 13", D: "Jun 12", E: "Jun 14", F: "Jun 14", G: "Jun 15", H: "Jun 15", I: "Jun 16", J: "Jun 16", K: "Jun 17", L: "Jun 17" },
+    2: { A: "Jun 18", B: "Jun 18", C: "Jun 19", D: "Jun 19", E: "Jun 20", F: "Jun 20", G: "Jun 21", H: "Jun 21", I: "Jun 22", J: "Jun 22", K: "Jun 23", L: "Jun 23" },
+    3: { A: "Jun 24", B: "Jun 24", C: "Jun 24", D: "Jun 25", E: "Jun 25", F: "Jun 25", G: "Jun 26", H: "Jun 26", I: "Jun 26", J: "Jun 27", K: "Jun 27", L: "Jun 27" }
   };
-  return dates[matchday]?.[group] || "TBD";
+  return dates[matchday]?.[group] || "待定";
 }
 
 function buildGroupSchedule() {
@@ -205,10 +161,7 @@ function buildGroupSchedule() {
     { matchday: 2, label: "第 2 轮", pairs: [[0, 2], [3, 1]] },
     { matchday: 3, label: "第 3 轮", pairs: [[3, 0], [1, 2]] }
   ];
-  const groups = window.WORLD_CUP_DATA.teams.reduce((result, team) => {
-    (result[team.group] ||= []).push(team);
-    return result;
-  }, {});
+  const groups = groupedTeams();
 
   return pairings.flatMap((round) => (
     Object.entries(groups).flatMap(([group, teams]) => (
@@ -226,8 +179,7 @@ function buildGroupSchedule() {
 function renderGroupSchedule() {
   const target = document.querySelector("#portalGroupSchedule");
   if (!target) return;
-  const matches = buildGroupSchedule();
-  const grouped = matches.reduce((result, match) => {
+  const grouped = buildGroupSchedule().reduce((result, match) => {
     (result[match.date] ||= []).push(match);
     return result;
   }, {});
@@ -251,7 +203,9 @@ function renderGroupSchedule() {
 }
 
 function renderMvpHistory() {
-  document.querySelector("#portalMvpGrid").innerHTML = [...MVP_WINNERS].reverse().map((winner) => `
+  const target = document.querySelector("#portalMvpGrid");
+  if (!target) return;
+  target.innerHTML = [...MVP_WINNERS].reverse().map((winner) => `
     <article class="portal-mvp-card">
       <span>${winner.year}</span>
       <div>
