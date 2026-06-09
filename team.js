@@ -112,13 +112,14 @@ function renderTeam(team) {
   const coach = coachFor(team);
   const updates = newsFor(team);
   const squad = window.WORLD_CUP_SQUADS?.[team.code] || team.players;
+  const displayName = `${team.flagEmoji ? `${team.flagEmoji} ` : ""}${team.name}`;
   document.title = `${team.name} · 世界杯数据中心`;
   document.querySelector("#teamDetail").innerHTML = `
     <section class="detail-hero">
       <div>
         <p class="eyebrow">${team.code} · Group ${team.group} · ${team.confederation}</p>
         <div class="detail-team-title">
-          ${team.flag ? `<img src="${team.flag}" alt="${team.name} flag" />` : ""}
+          <span class="detail-flag-emoji" aria-hidden="true">${team.flagEmoji || ""}</span>
           <h2>${team.name}</h2>
         </div>
         <p>${team.form} · 本届夺冠隐含胜率 ${team.probability.toFixed(1)}%</p>
@@ -139,7 +140,7 @@ function renderTeam(team) {
           <span>${squad.length} 名已录入球员</span>
         </div>
         <details class="squad-details">
-          <summary>展开 ${team.name} 完整球员名单</summary>
+          <summary>展开 ${displayName} 完整球员名单</summary>
           <div class="squad-table-wrap">
             <table class="squad-table">
               <thead>

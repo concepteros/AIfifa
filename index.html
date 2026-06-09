@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div id="accessGate" class="access-gate">
+    <div id="accessGate" class="access-gate" hidden>
       <section class="access-modal" role="dialog" aria-modal="true" aria-labelledby="accessTitle">
         <p class="eyebrow">Premium Access</p>
         <h2 id="accessTitle">连接钱包并解锁世界杯数据中心</h2>
@@ -167,6 +167,17 @@
         </div>
       </section>
 
+      <section class="panel watch-guide-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Viewing Guide</p>
+            <h3>?????????</h3>
+          </div>
+          <span>???????????</span>
+        </div>
+        <div id="watchGuideCalendar" class="watch-guide"></div>
+      </section>
+
       <section class="toolbar" aria-label="筛选工具">
         <label class="search">
           <span>搜索</span>
@@ -273,52 +284,9 @@
       </section>
     </main>
 
-      <aside class="market-sidebar" aria-label="聪明钱监控">
-      <div class="market-sidebar-heading">
-        <div>
-          <p class="eyebrow">Polymarket Sports</p>
-          <h3>聪明钱监控</h3>
-        </div>
-        <span class="pulse"></span>
-      </div>
-      <div class="smart-money-toolbar">
-        <label class="smart-money-toggle">
-          <input id="smartMoneyPushToggle" type="checkbox" checked />
-          <span>即时推送</span>
-        </label>
-        <span id="smartMoneyUpdatedAt">正在连接...</span>
-      </div>
-      <form id="smartMoneyWalletForm" class="smart-wallet-form">
-        <input id="smartMoneyWalletInput" type="text" placeholder="添加 0x 钱包地址" aria-label="添加监控钱包地址" />
-        <button type="submit" aria-label="添加钱包" title="添加钱包">+</button>
-      </form>
-      <p id="smartMoneyMessage" class="smart-money-message" aria-live="polite"></p>
-      <div id="smartMoneyCustomWallets" class="smart-wallet-list"></div>
-
-      <section class="smart-money-section">
-        <div class="smart-money-section-heading">
-          <strong>即时买卖</strong>
-          <span>体育 / 足球</span>
-        </div>
-        <div id="smartMoneyTrades" class="smart-money-trades">
-          <p class="market-sidebar-empty">等待交易推送</p>
-        </div>
-      </section>
-
-      <section class="smart-money-section">
-        <div class="smart-money-section-heading">
-          <strong>高胜率钱包 Top 25</strong>
-          <span>体育月榜</span>
-        </div>
-        <div id="smartMoneyRanking" class="smart-money-ranking">
-          <p class="market-sidebar-empty">正在加载排行榜...</p>
-        </div>
-      </section>
-    </aside>
     </div>
-
     <footer>
-      <span>数据说明：胜率为预测市场隐含概率，不等同于官方概率或博彩赔率。</span>
+      <span>本页不展示博彩市场内容，球队胜率为本地数据估算。</span>
     </footer>
 
     <script src="./data.js"></script>

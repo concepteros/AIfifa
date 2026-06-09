@@ -1,5 +1,3 @@
-const POLYMARKET_WORLD_CUP_URL = "https://polymarket.com/zh/sports/world-cup/games";
-const DEFAULT_POLYMARKET_QUERY = "2026 world cup winner";
 const SOLANA_USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 const SOLANA_USDC_RECIPIENT = "EwAh2VbsbgG2xWsFsDYMjmCUqq48cSkms1HATZDi3Vgq";
 const PREMIUM_PRICE_UNITS = 19_900_000n;
@@ -26,12 +24,7 @@ const state = {
   query: "",
   group: "all",
   sort: "probability",
-  historyView: "editions",
-  polymarket: {
-    query: localStorage.getItem("wcPolymarketQuery") || DEFAULT_POLYMARKET_QUERY,
-    lastMarkets: [],
-    lastEventCount: 0
-  }
+  historyView: "editions"
 };
 
 const els = {
@@ -40,6 +33,7 @@ const els = {
   sortSelect: document.querySelector("#sortSelect"),
   contendersList: document.querySelector("#contendersList"),
   teamGrid: document.querySelector("#teamGrid"),
+  watchGuideCalendar: document.querySelector("#watchGuideCalendar"),
   mvpList: document.querySelector("#mvpList"),
   historyContent: document.querySelector("#historyContent"),
   liveMatchList: document.querySelector("#liveMatchList"),
@@ -47,14 +41,6 @@ const els = {
   footballUpdatedAt: document.querySelector("#footballUpdatedAt"),
   sportsNewsList: document.querySelector("#sportsNewsList"),
   sportsNewsUpdatedAt: document.querySelector("#sportsNewsUpdatedAt"),
-  smartMoneyCustomWallets: document.querySelector("#smartMoneyCustomWallets"),
-  smartMoneyMessage: document.querySelector("#smartMoneyMessage"),
-  smartMoneyPushToggle: document.querySelector("#smartMoneyPushToggle"),
-  smartMoneyRanking: document.querySelector("#smartMoneyRanking"),
-  smartMoneyTrades: document.querySelector("#smartMoneyTrades"),
-  smartMoneyUpdatedAt: document.querySelector("#smartMoneyUpdatedAt"),
-  smartMoneyWalletForm: document.querySelector("#smartMoneyWalletForm"),
-  smartMoneyWalletInput: document.querySelector("#smartMoneyWalletInput"),
   updatedAt: document.querySelector("#updatedAt"),
   refreshButton: document.querySelector("#refreshButton"),
   refreshState: document.querySelector("#refreshState"),
@@ -85,39 +71,6 @@ const walletState = {
   accountsChangedHandler: null,
   paymentCheckInFlight: false,
   paymentPoll: null
-};
-
-function loadStoredSmartWallets() {
-  try {
-    const wallets = JSON.parse(localStorage.getItem("fifa2026SmartWallets") || "[]");
-    return Array.isArray(wallets)
-      ? wallets.filter((wallet) => /^0x[a-f0-9]{40}$/.test(wallet)).slice(0, 20)
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-function storeSmartMoneySetting(key, value) {
-  try {
-    localStorage.setItem(key, value);
-  } catch {
-    // Monitoring still works for this session when browser storage is unavailable.
-  }
-}
-
-function loadSmartMoneyPushSetting() {
-  try {
-    return localStorage.getItem("fifa2026SmartMoneyPush") !== "false";
-  } catch {
-    return true;
-  }
-}
-
-const smartMoneyState = {
-  customWallets: loadStoredSmartWallets(),
-  enabled: loadSmartMoneyPushSetting(),
-  eventSource: null
 };
 
 const accessState = {
@@ -163,7 +116,7 @@ function asPercent(price) {
 }
 
 function aliasesFor(team) {
-  return [team.name, team.code, ...(TEAM_ALIASES[team.name] || [])].map(normalize);
+  return [team.name, team.code, team.sourceName, ...(TEAM_ALIASES[team.name] || [])].map(normalize);
 }
 
 function teamMentioned(text, team) {
@@ -171,143 +124,18 @@ function teamMentioned(text, team) {
   return aliasesFor(team).some((alias) => alias && source.includes(` ${alias} `));
 }
 
-function isWinnerMarket(market) {
-  const text = normalize([market.question, market.title, market.slug, market.description].join(" "));
-  return (
-    text.includes("world cup") &&
-    !text.includes(" group ") &&
-    (text.includes("winner") || text.includes("win") || text.includes("champion"))
-  );
+function findTeamByName(name) {
+  const target = normalize(name);
+  return state.data.teams.find((team) => aliasesFor(team).some((alias) => alias === target));
 }
 
-function marketUrl(market) {
-  if (market.url) return market.url;
-  if (!market.eventSlug || !market.slug) return POLYMARKET_WORLD_CUP_URL;
-  const url = new URL(`/event/${market.eventSlug}`, "https://polymarket.com");
-  url.searchParams.set("marketSlug", market.slug);
-  url.searchParams.set("outcomeIndex", "0");
-  return url.toString();
+function teamLabel(team) {
+  return `${team.flagEmoji ? `${team.flagEmoji} ` : ""}${team.name}`;
 }
 
-function flattenMarkets(searchPayload) {
-  const markets = [];
-  (searchPayload.events || []).forEach((event) => {
-    (event.markets || []).forEach((market) => {
-      markets.push({
-        ...market,
-        eventTitle: event.title,
-        eventSlug: event.slug,
-        eventVolume: event.volume || event.volume24hr
-      });
-    });
-  });
-  (searchPayload.markets || []).forEach((market) => markets.push(market));
-  return markets.filter((market) => market && !market.closed && market.active !== false);
-}
-
-function pricesFromMarket(market) {
-  if (Array.isArray(market.outcomes) && typeof market.outcomes[0] === "object") {
-    return market.outcomes
-      .map((outcome) => ({
-        outcome: String(outcome.label || outcome.outcome || ""),
-        probability: asPercent(outcome.percentage)
-      }))
-      .filter((entry) => entry.outcome && entry.probability !== null);
-  }
-  const outcomes = parseMaybeJson(market.outcomes);
-  const prices = parseMaybeJson(market.outcomePrices);
-  return outcomes
-    .map((outcome, index) => ({
-      outcome: String(outcome),
-      probability: asPercent(prices[index])
-    }))
-    .filter((entry) => entry.probability !== null);
-}
-
-function probabilityFromMarket(team, market) {
-  const entries = pricesFromMarket(market);
-  if (!entries.length || !isWinnerMarket(market)) return null;
-
-  const directOutcome = entries.find((entry) => teamMentioned(entry.outcome, team));
-  if (directOutcome) {
-    return {
-      probability: directOutcome.probability,
-      source: market.question || market.eventTitle || "Polymarket",
-      url: marketUrl(market),
-      volume: Number(market.volumeNum || market.volume || market.eventVolume || 0)
-    };
-  }
-
-  const yesOutcome = entries.find((entry) => normalize(entry.outcome) === "yes");
-  if (yesOutcome && teamMentioned([market.question, market.title, market.slug].join(" "), team)) {
-    return {
-      probability: yesOutcome.probability,
-      source: market.question || market.eventTitle || "Polymarket",
-      url: marketUrl(market),
-      volume: Number(market.volumeNum || market.volume || market.eventVolume || 0)
-    };
-  }
-
-  return null;
-}
-
-function applyPolymarketMarkets(markets) {
-  const next = structuredClone(state.data);
-  let matched = 0;
-
-  next.teams = next.teams.map((team) => {
-    const candidates = markets
-      .map((market) => probabilityFromMarket(team, market))
-      .filter(Boolean)
-      .sort((a, b) => b.volume - a.volume);
-
-    if (!candidates.length) {
-      return {
-        ...team,
-        marketSource: "未匹配 Polymarket 市场",
-        marketUrl: ""
-      };
-    }
-
-    matched += 1;
-    const best = candidates[0];
-    return {
-      ...team,
-      probability: Number(best.probability.toFixed(1)),
-      marketSource: best.source,
-      marketUrl: best.url,
-      marketVolume: best.volume
-    };
-  });
-
-  next.meta = {
-    ...next.meta,
-    updatedAt: new Date().toISOString(),
-    status: "polymarket",
-    note: `Polymarket Gamma API: ${matched} teams matched from ${markets.length} active markets.`
-  };
-
-  state.data = next;
-  return matched;
-}
-
-async function fetchPolymarketMarkets() {
-  const response = await fetch("/api/polymarket/world-cup-winner", {
-    headers: { Accept: "application/json" }
-  });
-
-  if (!response.ok) throw new Error(`Polymarket API ${response.status}`);
-  const payload = await response.json();
-  const markets = payload.markets || [];
-
-  if (!markets.length) {
-    throw new Error("No World Cup winner markets found in Polymarket response");
-  }
-
-  state.polymarket.lastMarkets = markets;
-  state.polymarket.lastEventCount = markets.length;
-  state.polymarket.pollIntervalMs = payload.pollIntervalMs || 30000;
-  return markets;
+function matchTeamLabel(name) {
+  const team = findTeamByName(name);
+  return team ? teamLabel(team) : name;
 }
 
 function setupFilters() {
@@ -410,7 +238,6 @@ function startPremiumDataSync() {
   void refreshData();
   void refreshLiveFootball();
   void refreshSportsNews();
-  connectSmartMoneyStream();
   if (accessState.syncStarted) return;
   accessState.syncStarted = true;
   setInterval(refreshData, 15000);
@@ -463,8 +290,6 @@ function storedFrontendAccess() {
 function lockAccessGate(message = "请连接已解锁钱包，或连接钱包完成支付。") {
   accessState.unlocked = false;
   stopPaymentPolling();
-  smartMoneyState.eventSource?.close();
-  smartMoneyState.eventSource = null;
   els.accessGate.hidden = false;
   els.accessWalletOptions.hidden = false;
   els.accessPayment.hidden = true;
@@ -770,7 +595,7 @@ async function disconnectWallet() {
   clearFrontendAccess();
   renderWalletState();
   setWalletMessage("钱包已断开。");
-  lockAccessGate();
+  unlockAccess();
 }
 
 async function restoreAuthorizedSession() {
@@ -798,9 +623,8 @@ function setupWallet() {
   document.addEventListener("click", (event) => {
     if (!event.target.closest(".wallet-control")) setWalletMenu(false);
   });
-  lockAccessGate();
   renderWalletState();
-  void restoreAuthorizedSession();
+  unlockAccess();
 }
 
 function filteredTeams() {
@@ -823,7 +647,7 @@ function renderContenders() {
         <div class="contender">
           <span class="rank">${index + 1}</span>
           <div class="team-name">
-            <strong>${team.name}</strong>
+            <strong>${teamLabel(team)}</strong>
             <span>${team.code} · ${team.confederation} · ${team.form}</span>
           </div>
           <div class="bar" aria-label="${team.name} 夺冠胜率 ${team.probability}%"><span style="width:${width}%"></span></div>
@@ -842,7 +666,7 @@ function renderTeams() {
         <div class="team-name">
           <a class="team-detail-link" href="./team.html?team=${encodeURIComponent(team.code)}">
             <strong class="team-title">
-              ${team.flag ? `<img class="team-flag" src="${team.flag}" alt="" />` : ""}
+              <span class="flag-emoji" aria-hidden="true">${team.flagEmoji || ""}</span>
               <span>${team.name}</span>
             </strong>
           </a>
@@ -853,15 +677,41 @@ function renderTeams() {
           <span>${team.probability.toFixed(1)}%</span>
           <span>${team.form}</span>
         </div>
-        <a class="market-link" href="${team.marketUrl || POLYMARKET_WORLD_CUP_URL}" target="_blank" rel="noreferrer">
-          查看 Polymarket 市场
-        </a>
         <a class="squad-link" href="./team.html?team=${encodeURIComponent(team.code)}">
           查看完整 ${window.WORLD_CUP_SQUADS?.[team.code]?.length || team.players.length} 人名单
         </a>
       </article>
     `)
     .join("");
+}
+
+function renderWatchGuide() {
+  if (!els.watchGuideCalendar || !state.data.watchGuide) return;
+  const { highlights = [], calendar = [] } = state.data.watchGuide;
+  els.watchGuideCalendar.innerHTML = `
+    <div class="watch-highlights">
+      ${highlights.map((item) => `
+        <article class="watch-highlight">
+          <span>${item.date}</span>
+          <strong>${item.title}</strong>
+          <small>${item.stage}</small>
+          <p>${item.detail}</p>
+        </article>
+      `).join("")}
+    </div>
+    <div class="schedule-calendar">
+      ${calendar.map((item) => `
+        <article class="schedule-day">
+          <time>${item.date}</time>
+          <div>
+            <strong>${item.stage}</strong>
+            <span>${item.groups}</span>
+          </div>
+          <p>${item.pairing}</p>
+        </article>
+      `).join("")}
+    </div>
+  `;
 }
 
 function renderMvp() {
@@ -921,9 +771,9 @@ function renderLiveMatches(payload) {
         <span>${match.round}${match.venue ? ` · ${match.venue}` : ""}</span>
       </div>
       <div class="live-score">
-        <div><strong>${match.home.name}</strong><span>主队</span></div>
+        <div><strong>${matchTeamLabel(match.home.name)}</strong><span>主队</span></div>
         <b>${match.home.score ?? 0} - ${match.away.score ?? 0}</b>
-        <div><strong>${match.away.name}</strong><span>客队</span></div>
+        <div><strong>${matchTeamLabel(match.away.name)}</strong><span>客队</span></div>
       </div>
       ${renderMatchEvents(match.events)}
     </article>
@@ -947,7 +797,7 @@ function renderStandings(payload) {
       ${group.map((row) => `
         <div class="standing-row">
           <span>${row.rank}</span>
-          <strong>${row.team.name}</strong>
+          <strong>${matchTeamLabel(row.team.name)}</strong>
           <b>${row.points}</b>
         </div>
       `).join("")}
@@ -1007,139 +857,6 @@ async function refreshSportsNews() {
   }
 }
 
-function shortWallet(address) {
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
-}
-
-function escapeHtml(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (character) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#039;"
-  })[character]);
-}
-
-function formatCurrency(value) {
-  return new Intl.NumberFormat("zh-CN", {
-    currency: "USD",
-    maximumFractionDigits: 0,
-    notation: "compact",
-    style: "currency"
-  }).format(value || 0);
-}
-
-function renderSmartMoneyCustomWallets() {
-  if (!els.smartMoneyCustomWallets) return;
-  els.smartMoneyCustomWallets.innerHTML = smartMoneyState.customWallets.map((address) => `
-    <span class="smart-wallet-chip">
-      ${escapeHtml(shortWallet(address))}
-      <button data-remove-smart-wallet="${address}" type="button" aria-label="删除 ${address}" title="删除钱包">×</button>
-    </span>
-  `).join("");
-}
-
-function renderSmartMoney(payload) {
-  if (!els.smartMoneyRanking || !els.smartMoneyTrades) return;
-  const updateTime = new Intl.DateTimeFormat("zh-CN", { timeStyle: "medium" }).format(new Date(payload.updatedAt));
-  els.smartMoneyUpdatedAt.textContent = payload.stale ? `快照：${updateTime}` : `更新：${updateTime}`;
-  if (payload.stale) {
-    els.smartMoneyMessage.textContent = "数据源波动，正在展示最近快照。";
-  }
-  els.smartMoneyRanking.innerHTML = payload.ranking.map((wallet) => `
-    <article class="smart-wallet-rank">
-      <b>${wallet.rank}</b>
-      <div>
-        <strong>${escapeHtml(wallet.label)}</strong>
-        <small>${escapeHtml(shortWallet(wallet.address))}</small>
-      </div>
-      <span>
-        ${wallet.winRate === null ? "样本不足" : `${wallet.winRate.toFixed(0)}%`}
-        <small>胜率估算</small>
-      </span>
-    </article>
-  `).join("");
-  els.smartMoneyTrades.innerHTML = payload.trades.length
-    ? payload.trades.map((trade) => `
-      <article class="smart-trade ${trade.side.toLowerCase()}">
-        <div>
-          <strong>${trade.side === "BUY" ? "买入" : "卖出"} · ${escapeHtml(trade.outcome)}</strong>
-          <time>${new Intl.DateTimeFormat("zh-CN", { timeStyle: "medium" }).format(new Date(trade.timestamp * 1000))}</time>
-        </div>
-        <a href="${escapeHtml(trade.eventUrl)}" target="_blank" rel="noreferrer">${escapeHtml(trade.title)}</a>
-        <p>${escapeHtml(trade.label)} · ${escapeHtml(shortWallet(trade.address))}</p>
-        <span>${trade.price.toFixed(1)}% · ${formatCurrency(trade.amount)}</span>
-      </article>
-    `).join("")
-    : '<p class="market-sidebar-empty">等待体育交易推送</p>';
-}
-
-function smartMoneyStreamUrl() {
-  const params = new URLSearchParams();
-  if (smartMoneyState.customWallets.length) params.set("wallets", smartMoneyState.customWallets.join(","));
-  return `/api/polymarket/smart-money-stream?${params.toString()}`;
-}
-
-function connectSmartMoneyStream() {
-  smartMoneyState.eventSource?.close();
-  smartMoneyState.eventSource = null;
-  if (!accessState.unlocked) {
-    els.smartMoneyUpdatedAt.textContent = "解锁后开启";
-    return;
-  }
-  if (!smartMoneyState.enabled) {
-    els.smartMoneyUpdatedAt.textContent = "推送已关闭";
-    return;
-  }
-  els.smartMoneyUpdatedAt.textContent = "正在连接...";
-  const source = new EventSource(smartMoneyStreamUrl());
-  source.onmessage = (event) => renderSmartMoney(JSON.parse(event.data));
-  source.onerror = () => {
-    els.smartMoneyMessage.textContent = "推送连接暂时中断，正在重试...";
-  };
-  smartMoneyState.eventSource = source;
-}
-
-function setupSmartMoney() {
-  if (!els.smartMoneyPushToggle) return;
-  els.smartMoneyPushToggle.checked = smartMoneyState.enabled;
-  renderSmartMoneyCustomWallets();
-  els.smartMoneyPushToggle.addEventListener("change", () => {
-    smartMoneyState.enabled = els.smartMoneyPushToggle.checked;
-    storeSmartMoneySetting("fifa2026SmartMoneyPush", String(smartMoneyState.enabled));
-    els.smartMoneyMessage.textContent = smartMoneyState.enabled ? "即时推送已开启。" : "即时推送已关闭。";
-    connectSmartMoneyStream();
-  });
-  els.smartMoneyWalletForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const address = els.smartMoneyWalletInput.value.trim().toLowerCase();
-    if (!/^0x[a-f0-9]{40}$/.test(address)) {
-      els.smartMoneyMessage.textContent = "请输入有效的 0x 钱包地址。";
-      return;
-    }
-    if (!smartMoneyState.customWallets.includes(address) && smartMoneyState.customWallets.length >= 20) {
-      els.smartMoneyMessage.textContent = "最多可自定义监控 20 个钱包。";
-      return;
-    }
-    if (!smartMoneyState.customWallets.includes(address)) smartMoneyState.customWallets.push(address);
-    storeSmartMoneySetting("fifa2026SmartWallets", JSON.stringify(smartMoneyState.customWallets));
-    els.smartMoneyWalletInput.value = "";
-    els.smartMoneyMessage.textContent = "钱包已加入实时监控。";
-    renderSmartMoneyCustomWallets();
-    connectSmartMoneyStream();
-  });
-  els.smartMoneyCustomWallets.addEventListener("click", (event) => {
-    const address = event.target.dataset.removeSmartWallet;
-    if (!address) return;
-    smartMoneyState.customWallets = smartMoneyState.customWallets.filter((wallet) => wallet !== address);
-    storeSmartMoneySetting("fifa2026SmartWallets", JSON.stringify(smartMoneyState.customWallets));
-    els.smartMoneyMessage.textContent = "钱包已移除。";
-    renderSmartMoneyCustomWallets();
-    connectSmartMoneyStream();
-  });
-}
-
 function renderHistory() {
   if (state.historyView === "players") {
     els.historyContent.innerHTML = `
@@ -1185,6 +902,7 @@ function renderMeta() {
 function render() {
   renderMeta();
   renderContenders();
+  renderWatchGuide();
   renderMvp();
   renderTeams();
   renderHistory();
@@ -1194,28 +912,17 @@ function setRefreshLabel(text) {
   els.refreshState.textContent = text;
 }
 
-async function refreshData() {
-  if (!accessState.unlocked) return;
-  setRefreshLabel("正在更新实时数据...");
-  try {
-    const markets = await fetchPolymarketMarkets();
-    const matched = applyPolymarketMarkets(markets);
-    setRefreshLabel(`实时数据 · 已更新 ${matched} 队`);
-    render();
-  } catch (error) {
-    console.warn(error);
-    state.data.meta = {
-      ...state.data.meta,
-      updatedAt: new Date().toISOString(),
-      status: "demo",
-      note: `Polymarket 同步失败：${error.message}`
-    };
-    setRefreshLabel("实时数据失败 · 使用本地数据");
-    render();
-  }
+function refreshData() {
+  state.data.meta = {
+    ...state.data.meta,
+    updatedAt: new Date().toISOString(),
+    status: "local",
+    note: "????????"
+  };
+  setRefreshLabel("???????");
+  render();
 }
 
 setupFilters();
 setupWallet();
-setupSmartMoney();
 render();

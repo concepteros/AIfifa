@@ -94,7 +94,83 @@ window.WORLD_CUP_DATA = {
     { name: "Lionel Messi", team: "Argentina", years: "2006, 2010, 2014, 2018, 2022", role: "Forward", note: "2022 champion, two-time Golden Ball." },
     { name: "Cristiano Ronaldo", team: "Portugal", years: "2006, 2010, 2014, 2018, 2022", role: "Forward", note: "Scored in five World Cups." },
     { name: "Luka Modric", team: "Croatia", years: "2006, 2014, 2018, 2022", role: "Midfielder", note: "2018 Golden Ball, finalist." }
-  ]
+  ],
+  watchGuide: {
+    highlights: [
+      { date: "2026-06-11", stage: "Opening match", title: "Mexico vs South Africa", detail: "Group A opens at Estadio Azteca in Mexico City." },
+      { date: "2026-06-12", stage: "Host debuts", title: "Canada and United States", detail: "Canada opens in Toronto; United States opens in Los Angeles." },
+      { date: "2026-06-11 to 2026-06-27", stage: "Group stage", title: "12 groups, three matchdays", detail: "Top two in each group plus the eight best third-place teams advance." },
+      { date: "2026-07-19", stage: "Final", title: "MetLife Stadium", detail: "The champion will be decided in East Rutherford, New Jersey." }
+    ],
+    calendar: [
+      { date: "Jun 11", stage: "Group MD1", groups: "Group A", pairing: "1 vs 2, 3 vs 4" },
+      { date: "Jun 12", stage: "Group MD1", groups: "Groups B / D", pairing: "Canada and United States open their campaigns" },
+      { date: "Jun 13", stage: "Group MD1", groups: "Groups B / C / D", pairing: "More first-round group fixtures" },
+      { date: "Jun 14", stage: "Group MD1", groups: "Groups E / F", pairing: "First-round group fixtures continue" },
+      { date: "Jun 15", stage: "Group MD1", groups: "Groups G / H", pairing: "First-round group fixtures continue" },
+      { date: "Jun 16", stage: "Group MD1", groups: "Groups I / J", pairing: "First-round group fixtures continue" },
+      { date: "Jun 17", stage: "Group MD1", groups: "Groups K / L", pairing: "First-round group fixtures close" },
+      { date: "Jun 18-23", stage: "Group MD2", groups: "Groups A-L", pairing: "1 vs 3, 4 vs 2" },
+      { date: "Jun 24-27", stage: "Group MD3", groups: "Groups A-L", pairing: "4 vs 1, 2 vs 3" },
+      { date: "Jun 28-Jul 3", stage: "Round of 32", groups: "Knockout", pairing: "Single-elimination matches begin" },
+      { date: "Jul 4-7", stage: "Round of 16", groups: "Knockout", pairing: "Winners move into the quarterfinals" },
+      { date: "Jul 9-11", stage: "Quarterfinals", groups: "Knockout", pairing: "Eight teams remain" },
+      { date: "Jul 14-15", stage: "Semifinals", groups: "Knockout", pairing: "Two semifinal matches" },
+      { date: "Jul 18", stage: "Third-place match", groups: "Knockout", pairing: "Bronze-medal match" },
+      { date: "Jul 19", stage: "Final", groups: "Knockout", pairing: "World Cup champion decided" }
+    ]
+  }
+};
+
+const FLAG_EMOJI_BY_CODE = {
+  MEX: "🇲🇽",
+  RSA: "🇿🇦",
+  KOR: "🇰🇷",
+  CZE: "🇨🇿",
+  CAN: "🇨🇦",
+  BIH: "🇧🇦",
+  QAT: "🇶🇦",
+  SUI: "🇨🇭",
+  BRA: "🇧🇷",
+  MAR: "🇲🇦",
+  HAI: "🇭🇹",
+  SCO: "🏴",
+  USA: "🇺🇸",
+  PAR: "🇵🇾",
+  AUS: "🇦🇺",
+  TUR: "🇹🇷",
+  GER: "🇩🇪",
+  CUW: "🇨🇼",
+  CIV: "🇨🇮",
+  ECU: "🇪🇨",
+  NED: "🇳🇱",
+  JPN: "🇯🇵",
+  SWE: "🇸🇪",
+  TUN: "🇹🇳",
+  BEL: "🇧🇪",
+  EGY: "🇪🇬",
+  IRN: "🇮🇷",
+  NZL: "🇳🇿",
+  ESP: "🇪🇸",
+  CPV: "🇨🇻",
+  KSA: "🇸🇦",
+  URU: "🇺🇾",
+  FRA: "🇫🇷",
+  SEN: "🇸🇳",
+  IRQ: "🇮🇶",
+  NOR: "🇳🇴",
+  ARG: "🇦🇷",
+  ALG: "🇩🇿",
+  AUT: "🇦🇹",
+  JOR: "🇯🇴",
+  POR: "🇵🇹",
+  COD: "🇨🇩",
+  UZB: "🇺🇿",
+  COL: "🇨🇴",
+  ENG: "🏴",
+  CRO: "🇭🇷",
+  GHA: "🇬🇭",
+  PAN: "🇵🇦"
 };
 
 const WORLD_CUP_TEAM_SOURCE = [
@@ -161,6 +237,7 @@ window.WORLD_CUP_DATA.teams = window.WORLD_CUP_DATA.teams.map((team) => {
   return {
     ...team,
     ...source,
+    flagEmoji: FLAG_EMOJI_BY_CODE[team.code] || "",
     flag: `https://flagcdn.com/w80/${source.iso2.toLowerCase()}.png`,
     sourceRepository: "https://github.com/rezarahiminia/worldcup2026"
   };
