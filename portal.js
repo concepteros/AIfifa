@@ -8,6 +8,11 @@ let predictionMarketsTimer = null;
 let predictionSportsReconnectTimer = null;
 let predictionSportsSocket = null;
 let predictionMarketsPayload = null;
+const predictionMarketView = {
+  filter: "all",
+  query: "",
+  sort: "start"
+};
 const predictionSportsResults = new Map();
 const MVP_WINNERS = [
   { year: 1978, name: "Mario Kempes", team: "Argentina" },
@@ -48,6 +53,98 @@ function formatCompactCurrency(value) {
     notation: "compact",
     style: "currency"
   }).format(Number(value) || 0);
+}
+
+function marketOutcomes(game) {
+  return (game.markets || []).flatMap((market) =>
+    (market.outcomes || []).map((outcome) => ({
+      ...outcome,
+      marketQuestion: market.question,
+      marketType: market.marketType
+    }))
+  );
+}
+
+function leadingOutcome(game) {
+  return marketOutcomes(game)
+    .filter((outcome) => Number.isFinite(outcome.percentage))
+    .sort((a, b) => b.percentage - a.percentage)[0] || null;
+}
+
+function marketConfidence(game) {
+  return leadingOutcome(game)?.percentage || 0;
+}
+
+function isStrongMarket(game) {
+  return marketConfidence(game) >= 60;
+}
+
+function isLiquidMarket(game) {
+  return Number(game.liquidity || 0) >= 1000 || Number(game.volume || 0) >= 5000;
+}
+
+function marketSearchText(game) {
+  return [
+    game.title,
+    game.slug,
+    ...(game.markets || []).flatMap((market) => [
+      market.question,
+      market.marketType,
+      ...(market.outcomes || []).map((outcome) => outcome.label)
+    ])
+  ].filter(Boolean).join(" ").toLowerCase();
+}
+
+function filteredPredictionGames(games) {
+  const query = predictionMarketView.query.trim().toLowerCase();
+  return [...games]
+    .filter((game) => {
+      if (query && !marketSearchText(game).includes(query)) return false;
+      if (predictionMarketView.filter === "live") return game.live;
+      if (predictionMarketView.filter === "strong") return isStrongMarket(game);
+      if (predictionMarketView.filter === "liquid") return isLiquidMarket(game);
+      return true;
+    })
+    .sort((a, b) => {
+      if (predictionMarketView.sort === "volume") return Number(b.volume || 0) - Number(a.volume || 0);
+      if (predictionMarketView.sort === "liquidity") return Number(b.liquidity || 0) - Number(a.liquidity || 0);
+      if (predictionMarketView.sort === "confidence") return marketConfidence(b) - marketConfidence(a);
+      return new Date(a.startTime || "2999-01-01") - new Date(b.startTime || "2999-01-01");
+    });
+}
+
+function renderPredictionMarketDashboard(payload, visibleGames) {
+  const target = document.querySelector("#predictionMarketDashboard");
+  if (!target) return;
+  const games = payload.games || [];
+  const totalVolume = games.reduce((total, game) => total + Number(game.volume || 0), 0);
+  const totalLiquidity = games.reduce((total, game) => total + Number(game.liquidity || 0), 0);
+  const strongest = games
+    .map((game) => ({ game, outcome: leadingOutcome(game) }))
+    .filter((item) => item.outcome)
+    .sort((a, b) => b.outcome.percentage - a.outcome.percentage)[0];
+  target.innerHTML = `
+    <article>
+      <span>同步赛事</span>
+      <strong>${games.length}</strong>
+      <small>当前显示 ${visibleGames.length}</small>
+    </article>
+    <article>
+      <span>总成交量</span>
+      <strong>${formatCompactCurrency(totalVolume)}</strong>
+      <small>Polymarket 实时盘口</small>
+    </article>
+    <article>
+      <span>总流动性</span>
+      <strong>${formatCompactCurrency(totalLiquidity)}</strong>
+      <small>资金深度</small>
+    </article>
+    <article>
+      <span>最强信号</span>
+      <strong>${strongest ? `${escapeHtml(strongest.outcome.label)} ${strongest.outcome.percentage.toFixed(1)}%` : "-"}</strong>
+      <small>${strongest ? escapeHtml(strongest.game.title) : "等待盘口"}</small>
+    </article>
+  `;
 }
 
 function renderEvents(events) {
@@ -228,65 +325,80 @@ function renderPredictionMarkets(payload) {
   const updatedAt = document.querySelector("#predictionMarketsUpdatedAt");
   if (!target || !updatedAt) return;
 
-  updatedAt.textContent = payload.stale
-    ? "正在展示最近快照"
-    : `更新：${formatDate(payload.updatedAt)}`;
+  const games = payload.games || [];
+  const visibleGames = filteredPredictionGames(games);
+  renderPredictionMarketDashboard(payload, visibleGames);
 
-  if (!payload.games.length) {
+  updatedAt.textContent = payload.stale
+    ? "????????"
+    : `???${formatDate(payload.updatedAt)}`;
+
+  if (!games.length) {
     target.innerHTML = `
       <div class="live-empty">
-        <strong>等待开赛</strong>
-        <span>世界杯竞猜盘口上线后将在这里即时同步，页面会每 15 秒自动检查。</span>
+        <strong>????</strong>
+        <span>??????????????????????? 15 ??????</span>
       </div>
     `;
     return;
   }
 
+  if (!visibleGames.length) {
+    target.innerHTML = '<p class="live-empty-detail">?????????????????</p>';
+    return;
+  }
+
   predictionMarketsPayload = payload;
-  target.innerHTML = payload.games.map((game) => {
+  target.innerHTML = visibleGames.map((game) => {
     const score = predictionSportsResults.get(game.slug);
+    const leader = leadingOutcome(game);
+    const leaderText = leader ? ` ? ?? ${escapeHtml(leader.label)} ${leader.percentage.toFixed(1)}%` : "";
+    const scoreHtml = score ? [
+      '<div class="prediction-market-score">',
+      `  <strong>${escapeHtml(score.score || "????")}</strong>`,
+      `  <span>${escapeHtml([score.period, score.elapsed].filter(Boolean).join(" ? ") || score.status || "??")}</span>`,
+      '</div>'
+    ].join("") : "";
+    const marketHtml = game.markets.length
+      ? game.markets.map((market) => {
+        const outcomes = market.outcomes.map((outcome) => `
+          <span>
+            <i style="--odds:${Math.max(0, Math.min(100, outcome.percentage))}%"></i>
+            <b>${escapeHtml(outcome.label)}</b>
+            <strong>${outcome.percentage.toFixed(1)}%</strong>
+          </span>
+        `).join("");
+        return `
+          <section>
+            <div>
+              <strong>${escapeHtml(market.question)}</strong>
+              ${market.marketType ? `<span>${escapeHtml(market.marketType)}</span>` : ""}
+            </div>
+            <div class="prediction-market-outcomes">${outcomes}</div>
+          </section>
+        `;
+      }).join("")
+      : '<p class="live-empty-detail">??????????</p>';
     return `
-    <article class="prediction-market-card">
-      <div class="prediction-market-heading">
-        <div>
-          <span>${game.live ? "比赛进行中" : "赛事盘口"}</span>
-          <h4>${escapeHtml(game.title)}</h4>
-        </div>
-        ${score ? `
-          <div class="prediction-market-score">
-            <strong>${escapeHtml(score.score || "等待比分")}</strong>
-            <span>${escapeHtml([score.period, score.elapsed].filter(Boolean).join(" · ") || score.status || "实时")}</span>
+      <article class="prediction-market-card ${isStrongMarket(game) ? "strong-signal" : ""}">
+        <div class="prediction-market-heading">
+          <div>
+            <span>${game.live ? "?????" : "????"}${leaderText}</span>
+            <h4>${escapeHtml(game.title)}</h4>
           </div>
-        ` : ""}
-        <a href="${escapeHtml(game.eventUrl)}" target="_blank" rel="noreferrer">查看市场</a>
-      </div>
-      <div class="prediction-market-meta">
-        <span>${game.startTime ? `开赛：${formatDate(game.startTime)}` : "开赛时间待定"}</span>
-        <span>成交量 ${formatCompactCurrency(game.volume)}</span>
-        <span>流动性 ${formatCompactCurrency(game.liquidity)}</span>
-      </div>
-      <div class="prediction-market-odds">
-        ${game.markets.length
-          ? game.markets.map((market) => `
-            <section>
-              <div>
-                <strong>${escapeHtml(market.question)}</strong>
-                ${market.marketType ? `<span>${escapeHtml(market.marketType)}</span>` : ""}
-              </div>
-              <div class="prediction-market-outcomes">
-                ${market.outcomes.map((outcome) => `
-                  <span>
-                    <b>${escapeHtml(outcome.label)}</b>
-                    <strong>${outcome.percentage.toFixed(1)}%</strong>
-                  </span>
-                `).join("")}
-              </div>
-            </section>
-          `).join("")
-          : '<p class="live-empty-detail">该赛事盘口正在更新。</p>'}
-      </div>
-    </article>
-  `;
+          ${scoreHtml}
+          <a href="${escapeHtml(game.eventUrl)}" target="_blank" rel="noreferrer">????</a>
+        </div>
+        <div class="prediction-market-meta">
+          <span>${game.startTime ? `???${formatDate(game.startTime)}` : "??????"}</span>
+          <span>??? ${formatCompactCurrency(game.volume)}</span>
+          <span>??? ${formatCompactCurrency(game.liquidity)}</span>
+          ${isStrongMarket(game) ? "<span>???</span>" : ""}
+          ${isLiquidMarket(game) ? "<span>????</span>" : ""}
+        </div>
+        <div class="prediction-market-odds">${marketHtml}</div>
+      </article>
+    `;
   }).join("");
 }
 
@@ -378,6 +490,18 @@ function setupPredictions() {
     <option value="${team.code}">${team.name} · ${team.code}</option>
   `).join("");
   document.querySelector("#predictionForm").addEventListener("submit", submitPrediction);
+  document.querySelector("#predictionMarketSearch")?.addEventListener("input", (event) => {
+    predictionMarketView.query = event.target.value;
+    if (predictionMarketsPayload) renderPredictionMarkets(predictionMarketsPayload);
+  });
+  document.querySelector("#predictionMarketFilter")?.addEventListener("change", (event) => {
+    predictionMarketView.filter = event.target.value;
+    if (predictionMarketsPayload) renderPredictionMarkets(predictionMarketsPayload);
+  });
+  document.querySelector("#predictionMarketSort")?.addEventListener("change", (event) => {
+    predictionMarketView.sort = event.target.value;
+    if (predictionMarketsPayload) renderPredictionMarkets(predictionMarketsPayload);
+  });
   refreshPredictions().catch((error) => {
     document.querySelector("#predictionMessage").textContent = error.message;
   });

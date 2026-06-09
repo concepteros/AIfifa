@@ -63,6 +63,31 @@
           <span>正在连接 Polymarket 即时比分...</span>
         </div>
         <div id="predictionLiveScores" class="prediction-live-scores"></div>
+        <div id="predictionMarketDashboard" class="prediction-market-dashboard"></div>
+        <div class="prediction-market-toolbar">
+          <label>
+            <span>搜索赛事</span>
+            <input id="predictionMarketSearch" type="search" placeholder="球队、赛事、盘口" />
+          </label>
+          <label>
+            <span>盘口类型</span>
+            <select id="predictionMarketFilter">
+              <option value="all">全部盘口</option>
+              <option value="live">进行中</option>
+              <option value="strong">强信号</option>
+              <option value="liquid">高流动性</option>
+            </select>
+          </label>
+          <label>
+            <span>排序</span>
+            <select id="predictionMarketSort">
+              <option value="start">开赛时间</option>
+              <option value="volume">成交量</option>
+              <option value="liquidity">流动性</option>
+              <option value="confidence">最高胜率</option>
+            </select>
+          </label>
+        </div>
         <div id="predictionMarkets" class="prediction-market-list">
           <p class="live-empty-detail">正在获取世界杯赛事盘口...</p>
         </div>

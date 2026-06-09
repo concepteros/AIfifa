@@ -1753,6 +1753,65 @@ footer a {
   gap: 12px;
 }
 
+.prediction-market-dashboard {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.prediction-market-dashboard article {
+  display: grid;
+  min-height: 94px;
+  align-content: space-between;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.prediction-market-dashboard span,
+.prediction-market-dashboard small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.prediction-market-dashboard strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prediction-market-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 160px 160px;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.prediction-market-toolbar label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.prediction-market-toolbar input,
+.prediction-market-toolbar select {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+}
+
 .prediction-sports-socket-state {
   display: flex;
   align-items: center;
@@ -1803,6 +1862,11 @@ footer a {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fbfcfb;
+}
+
+.prediction-market-card.strong-signal {
+  border-color: rgba(22, 122, 74, .45);
+  box-shadow: inset 3px 0 0 var(--green);
 }
 
 .prediction-market-heading,
@@ -1882,6 +1946,7 @@ footer a {
 }
 
 .prediction-market-outcomes span {
+  position: relative;
   display: flex;
   min-width: 112px;
   align-items: center;
@@ -1892,6 +1957,20 @@ footer a {
   border-radius: 6px;
   background: #fff;
   font-size: 12px;
+  overflow: hidden;
+}
+
+.prediction-market-outcomes i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--odds);
+  background: rgba(22, 122, 74, .1);
+}
+
+.prediction-market-outcomes b,
+.prediction-market-outcomes strong {
+  position: relative;
+  z-index: 1;
 }
 
 .prediction-market-outcomes strong {
@@ -1921,9 +2000,14 @@ footer a {
   .history-grid,
   .portal-group-grid,
   .portal-mvp-grid,
+  .prediction-market-dashboard,
   .prediction-live-scores,
   .sports-news-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .prediction-market-toolbar {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1973,6 +2057,7 @@ footer a {
   .feature-nav,
   .portal-group-grid,
   .portal-mvp-grid,
+  .prediction-market-dashboard,
   .prediction-live-scores,
   .sports-news-grid {
     grid-template-columns: 1fr;
