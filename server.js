@@ -20,6 +20,11 @@ const FOOTBALL_CACHE_MS = 15_000;
 const SPORTS_NEWS_URL = "https://ok.surf/api/v1/news-section";
 const ESPN_WORLD_CUP_NEWS_URL = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/news";
 const SPORTS_NEWS_CACHE_MS = 10 * 60_000;
+const PREDICT_FUN_BASE_URL = "https://api.predict.fun";
+const PREDICT_FUN_API_KEY = process.env.PREDICT_FUN_API_KEY || "";
+const PREDICT_FUN_CACHE_MS = 60_000;
+const PREDICT_FUN_PAGE_SIZE = 100;
+const PREDICT_FUN_MAX_PAGES = 10;
 const ROOT = __dirname;
 const DATA_ROOT = process.env.VERCEL ? path.join("/tmp", "fifa2026-data") : path.join(ROOT, "data");
 const PREDICTION_FILE = path.join(DATA_ROOT, "predictions.json");
@@ -43,6 +48,10 @@ let footballCache = {
   payload: null,
 };
 let sportsNewsCache = {
+  expiresAt: 0,
+  payload: null,
+};
+let predictFunCache = {
   expiresAt: 0,
   payload: null,
 };
@@ -97,6 +106,129 @@ function safeExternalUrl(value) {
   }
 }
 
+function safeJsonParse(value, fallback = []) {
+  if (Array.isArray(value)) return value;
+  if (value && typeof value === "object") return value;
+  try {
+    return JSON.parse(value || "[]");
+  } catch {
+    return fallback;
+  }
+}
+
+function normalizeMarketText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function predictFunOutcomePrice(outcome) {
+  const bid = Number(outcome?.bestBid?.price);
+  const ask = Number(outcome?.bestAsk?.price);
+  if (Number.isFinite(bid) && Number.isFinite(ask)) return (bid + ask) / 2;
+  if (Number.isFinite(ask)) return ask;
+  if (Number.isFinite(bid)) return bid;
+  return 0;
+}
+
+function predictFunYesPrice(market) {
+  const yes = (market.outcomes || []).find((outcome) => normalizeMarketText(outcome.name) === "yes");
+  return predictFunOutcomePrice(yes);
+}
+
+function normalizePredictFunMarket(market) {
+  const yesPrice = predictFunYesPrice(market);
+  return {
+    categorySlug: market.categorySlug || "",
+    id: String(market.id || market.conditionId || market.categorySlug || ""),
+    question: market.question || market.title || "",
+    title: market.title || market.question || "",
+    tradingStatus: market.tradingStatus || market.status || "",
+    updatedAt: market.updatedAt || market.createdAt || "",
+    url: market.categorySlug ? "https://predict.fun/markets/" + encodeURIComponent(market.categorySlug) : "https://predict.fun/",
+    yesPrice,
+  };
+}
+
+function isLikelyWorldCupPredictMarket(market) {
+  const text = normalizeMarketText([
+    market.title,
+    market.question,
+    market.description,
+    market.categorySlug,
+  ].filter(Boolean).join(" "));
+  return text.includes("fifwc") || text.includes("fifa world cup") || text.includes("world cup");
+}
+
+async function fetchPredictFunMarkets() {
+  if (!PREDICT_FUN_API_KEY) {
+    return {
+      configured: false,
+      markets: [],
+      message: "PREDICT_FUN_API_KEY is not configured",
+    };
+  }
+
+  const markets = [];
+  let after = "";
+  for (let page = 0; page < PREDICT_FUN_MAX_PAGES; page += 1) {
+    const url = new URL("/v1/markets", PREDICT_FUN_BASE_URL);
+    url.searchParams.set("status", "OPEN");
+    url.searchParams.set("first", String(PREDICT_FUN_PAGE_SIZE));
+    if (after) url.searchParams.set("after", after);
+
+    const response = await fetch(url, {
+      headers: {
+        Accept: "application/json",
+        "x-api-key": PREDICT_FUN_API_KEY,
+      },
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (!response.ok) throw new Error("Predict.fun " + response.status);
+    const payload = await response.json();
+    const pageMarkets = Array.isArray(payload.data) ? payload.data : [];
+    markets.push(...pageMarkets.filter(isLikelyWorldCupPredictMarket).map(normalizePredictFunMarket));
+    if (!payload.cursor || payload.cursor === after) break;
+    after = payload.cursor;
+  }
+
+  return {
+    configured: true,
+    markets,
+  };
+}
+
+async function getPredictFunGroupOdds() {
+  if (predictFunCache.payload && predictFunCache.expiresAt > Date.now()) {
+    return predictFunCache.payload;
+  }
+  try {
+    const payload = {
+      ...(await fetchPredictFunMarkets()),
+      pollIntervalMs: PREDICT_FUN_CACHE_MS,
+      stale: false,
+      updatedAt: new Date().toISOString(),
+    };
+    predictFunCache = {
+      expiresAt: Date.now() + PREDICT_FUN_CACHE_MS,
+      payload,
+    };
+    return payload;
+  } catch (error) {
+    if (predictFunCache.payload) {
+      return {
+        ...predictFunCache.payload,
+        errors: [error.message || "Predict.fun request failed"],
+        stale: true,
+        updatedAt: new Date().toISOString(),
+      };
+    }
+    throw error;
+  }
+}
 function formatSportsNewsArticle(article) {
   return {
     imageUrl: safeExternalUrl(article.og || article.image || article.imageUrl || ""),
@@ -434,6 +566,22 @@ async function handleRequest(request, response) {
       return json(response, 502, {
         articles: [],
         error: "?????????",
+        stale: true,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+  }
+
+  if (request.method === "GET" && request.url === "/api/predict/group-odds") {
+    try {
+      return json(response, 200, await getPredictFunGroupOdds());
+    } catch (error) {
+      console.error("Predict.fun group odds failed:", error);
+      return json(response, 502, {
+        configured: Boolean(PREDICT_FUN_API_KEY),
+        error: error.message || "Predict.fun request failed",
+        markets: [],
+        pollIntervalMs: PREDICT_FUN_CACHE_MS,
         stale: true,
         updatedAt: new Date().toISOString(),
       });

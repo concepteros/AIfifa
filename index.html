@@ -46,7 +46,6 @@
           <div class="hero-panel">
             <div><span class="metric-label">参赛队伍</span><strong>48</strong></div>
             <div><span class="metric-label">小组</span><strong>12</strong></div>
-            <div><span class="metric-label">历史届数</span><strong id="editionCount">-</strong></div>
           </div>
         </section>
 
@@ -56,6 +55,14 @@
             <span>北京时间显示</span>
           </div>
           <div id="watchGuideCalendar" class="watch-guide"></div>
+        </section>
+
+        <section class="panel group-odds-panel">
+          <div class="section-heading">
+            <div><p class="eyebrow">Market Window</p><h3>小组赛即时盘口</h3></div>
+            <span id="groupOddsUpdatedAt">正在连接盘口...</span>
+          </div>
+          <div id="groupOddsList" class="group-odds-list"></div>
         </section>
 
         <section class="toolbar" aria-label="筛选工具">
@@ -83,18 +90,7 @@
           </article>
         </section>
 
-        <section class="panel live-football-panel">
-          <div class="section-heading"><div><p class="eyebrow">API-Football Live</p><h3>世界杯实时比分</h3></div><span id="footballUpdatedAt">等待开赛</span></div>
-          <div class="live-football-layout">
-            <div><div id="liveMatchList" class="live-match-list"></div></div>
-            <aside>
-              <div class="live-side-heading"><strong>小组积分榜</strong><span>15 秒轮询</span></div>
-              <div id="standingsList" class="standings-list"></div>
-            </aside>
-          </div>
-        </section>
-
-        <section class="panel knockout-panel">
+<section class="panel knockout-panel">
           <div class="section-heading">
             <div><p class="eyebrow">Knockout Stage</p><h3>动态淘汰赛对阵图</h3></div>
             <span>等待淘汰赛结果</span>
@@ -111,18 +107,7 @@
           <div class="section-heading"><div><p class="eyebrow">Teams</p><h3>本届队伍与球员信息</h3></div><span class="hint">胜率为本地数据估算。</span></div>
           <div id="teamGrid" class="team-grid"></div>
         </section>
-
-        <section class="panel">
-          <div class="section-heading">
-            <div><p class="eyebrow">Archive</p><h3>往届世界杯队伍与球员信息</h3></div>
-            <div class="segmented" role="tablist" aria-label="历史视图">
-              <button class="active" data-history-view="editions" type="button">届次</button>
-              <button data-history-view="players" type="button">球员</button>
-            </div>
-          </div>
-          <div id="historyContent"></div>
-        </section>
-      </main>
+</main>
     </div>
 
     <footer><span>CheckFIFA 以公开赛事资料、球队数据与实时 API 为基础，持续整理 2026 世界杯观赛信息。</span></footer>

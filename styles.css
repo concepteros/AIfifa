@@ -610,7 +610,32 @@ button {
 }
 
 .team-grid {
+  grid-template-columns: 1fr;
+}
+
+.team-grid-visible,
+.team-grid-more-list {
+  display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.team-grid-more {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.team-grid-more summary {
+  cursor: pointer;
+  padding: 14px;
+  color: var(--gold);
+  font-weight: 900;
+  list-style-position: inside;
+}
+
+.team-grid-more-list {
+  padding: 0 14px 14px;
 }
 
 .team-card {
@@ -1265,6 +1290,8 @@ footer a {
   }
 
   .team-grid,
+  .team-grid-visible,
+  .team-grid-more-list,
   .history-grid,
   .portal-group-grid,
   .portal-mvp-grid,
@@ -1298,6 +1325,8 @@ footer a {
   .toolbar,
   .api-form,
   .team-grid,
+  .team-grid-visible,
+  .team-grid-more-list,
   .history-grid,
   .player-row,
   .watch-highlights,
@@ -1308,6 +1337,11 @@ footer a {
   .portal-group-grid,
   .portal-mvp-grid,
   .sports-news-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .group-odds-card,
+  .group-odds-prices {
     grid-template-columns: 1fr;
   }
 
@@ -1425,7 +1459,10 @@ body {
 }
 
 .dashboard-shell {
-  max-width: 1200px;
+  width: min(1320px, calc(100% - 64px));
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 0 0 80px;
 }
 
 .feature-nav-item,
@@ -1537,6 +1574,142 @@ body {
 .hero-panel strong,
 .probability,
 .schedule-score strong {
+  color: var(--gold);
+}
+
+.watch-guide-panel {
+  max-width: 1180px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.schedule-calendar {
+  gap: 14px;
+}
+
+.schedule-day-group,
+.schedule-more-list {
+  display: grid;
+  gap: 12px;
+}
+
+.schedule-day-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border: 1px solid rgba(241, 196, 15, 0.22);
+  border-radius: 8px;
+  background: rgba(241, 196, 15, 0.1);
+}
+
+.schedule-day-heading strong {
+  color: var(--gold);
+  font-weight: 900;
+}
+
+.schedule-day-heading span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.schedule-more {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.schedule-more summary {
+  cursor: pointer;
+  padding: 14px;
+  color: var(--gold);
+  font-weight: 900;
+  list-style-position: inside;
+}
+
+.schedule-more-list {
+  padding: 0 14px 14px;
+}
+
+.group-odds-panel {
+  max-width: 1180px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.group-odds-list {
+  display: grid;
+  gap: 12px;
+}
+
+.group-odds-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+  gap: 16px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.group-odds-card.is-empty {
+  opacity: 0.72;
+}
+
+.group-odds-match,
+.group-odds-source {
+  display: grid;
+  gap: 6px;
+}
+
+.group-odds-match span,
+.group-odds-match small,
+.group-odds-prices small,
+.group-odds-source,
+.group-odds-source a {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.group-odds-match strong {
+  color: #fff;
+  font-size: 16px;
+}
+
+.group-odds-prices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.group-odds-prices span {
+  display: grid;
+  gap: 5px;
+  min-height: 58px;
+  padding: 9px;
+  border: 1px solid rgba(241, 196, 15, 0.18);
+  border-radius: 8px;
+  background: rgba(241, 196, 15, 0.08);
+}
+
+.group-odds-prices strong {
+  color: var(--gold);
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.group-odds-source {
+  grid-column: 1 / -1;
+  padding-top: 2px;
+}
+
+.group-odds-source a {
+  text-decoration: none;
+}
+
+.group-odds-source a:hover {
   color: var(--gold);
 }
 
@@ -1869,6 +2042,10 @@ footer {
 }
 
 @media (max-width: 760px) {
+  .dashboard-shell {
+    width: min(100% - 28px, 1320px);
+  }
+
   .portal-topbar {
     align-items: flex-start;
     flex-direction: column-reverse;
