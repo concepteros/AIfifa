@@ -26,215 +26,6 @@ body {
   font-family: Inter, "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
 }
 
-.access-gate {
-  position: fixed;
-  z-index: 100;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 20px;
-  background: rgba(10, 20, 15, 0.72);
-  backdrop-filter: blur(12px);
-}
-
-.access-modal {
-  width: min(560px, 100%);
-  padding: 28px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fff;
-  box-shadow: var(--shadow);
-}
-
-.access-modal h2 {
-  margin-top: 8px;
-  font-size: clamp(28px, 5vw, 44px);
-  line-height: 1.08;
-}
-
-.access-copy {
-  margin-top: 14px;
-  color: var(--muted);
-  line-height: 1.7;
-}
-
-.access-steps {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin: 22px 0 16px;
-}
-
-.access-step {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  padding: 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.access-step span {
-  display: grid;
-  flex: 0 0 auto;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 999px;
-  background: #edf1ee;
-}
-
-.access-step.active {
-  border-color: #a8d9bc;
-  color: var(--green);
-  background: #f0f8f3;
-}
-
-.access-wallet-options {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-}
-
-.access-wallet-button {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  height: auto;
-  min-height: 70px;
-  padding: 12px;
-  border-color: var(--line);
-  background: #fbfcfb;
-  color: var(--ink);
-  text-align: left;
-}
-
-.access-wallet-button span:last-child {
-  display: grid;
-  gap: 4px;
-}
-
-.access-wallet-button small {
-  color: var(--muted);
-}
-
-.access-payment,
-.access-signature {
-  display: grid;
-  gap: 12px;
-}
-
-.access-signature > small {
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.access-wallet-summary {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.access-wallet-summary strong {
-  color: var(--ink);
-  overflow-wrap: anywhere;
-}
-
-.access-pay-button {
-  display: grid;
-  min-height: 46px;
-  place-items: center;
-  border-radius: 8px;
-  background: var(--green);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 900;
-  text-decoration: none;
-}
-
-.access-pay-button.disabled {
-  pointer-events: none;
-  opacity: 0.5;
-}
-
-.access-pay-button:disabled {
-  cursor: wait;
-  opacity: 0.65;
-}
-
-.access-verify-button {
-  background: var(--ink);
-  font-weight: 800;
-}
-
-.access-waiting {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #f7faf8;
-}
-
-.access-waiting div {
-  display: grid;
-  gap: 4px;
-}
-
-.access-waiting small {
-  color: var(--muted);
-  line-height: 1.5;
-}
-
-.access-spinner {
-  width: 22px;
-  height: 22px;
-  flex: 0 0 auto;
-  border: 3px solid #c9d9d0;
-  border-top-color: var(--green);
-  border-radius: 999px;
-  animation: spin 0.9s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.access-message {
-  min-height: 20px;
-  margin-top: 12px;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.topbar,
-footer {
-  width: min(1400px, calc(100% - 32px));
-  margin: 0 auto;
-}
-
-.dashboard-shell {
-  width: min(1740px, calc(100% - 32px));
-  margin: 0 auto;
-}
-
-.dashboard-shell main {
-  min-width: 0;
-}
-
 .topbar {
   min-height: 84px;
   display: flex;
@@ -407,147 +198,6 @@ button {
   cursor: pointer;
 }
 
-.wallet-control {
-  position: relative;
-}
-
-.wallet-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  min-width: 156px;
-  justify-content: center;
-  background: var(--ink);
-  font-size: 14px;
-  font-weight: 800;
-}
-
-.wallet-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 999px;
-  background: #7bdca6;
-}
-
-.wallet-menu {
-  position: absolute;
-  z-index: 20;
-  top: calc(100% + 10px);
-  right: 0;
-  width: min(340px, calc(100vw - 32px));
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fff;
-  box-shadow: var(--shadow);
-}
-
-.wallet-menu-header,
-.wallet-option,
-.wallet-connected {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.wallet-menu-header {
-  padding: 4px 4px 12px;
-}
-
-.wallet-close {
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  border-color: var(--line);
-  background: #fff;
-  color: var(--ink);
-  font-size: 22px;
-  line-height: 1;
-}
-
-.wallet-options {
-  display: grid;
-  gap: 6px;
-}
-
-.wallet-option {
-  width: 100%;
-  height: auto;
-  min-height: 62px;
-  justify-content: flex-start;
-  padding: 10px;
-  border-color: var(--line);
-  background: #fbfcfb;
-  color: var(--ink);
-  text-align: left;
-}
-
-.wallet-option:hover {
-  border-color: #aab8b0;
-  background: #f3f7f4;
-}
-
-.wallet-option span:last-child {
-  display: grid;
-  gap: 3px;
-}
-
-.wallet-option small {
-  color: var(--muted);
-}
-
-.wallet-icon {
-  display: grid;
-  flex: 0 0 auto;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 8px;
-  color: #fff;
-  font-size: 11px;
-  font-weight: 900;
-}
-
-.phantom-icon {
-  background: #7257dc;
-}
-
-.okx-icon {
-  background: #111;
-}
-
-.wc-icon {
-  background: #2f80ed;
-}
-
-.muted-option {
-  opacity: 0.72;
-}
-
-.wallet-connected {
-  padding: 12px 4px 4px;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.wallet-connected button {
-  height: 34px;
-  border-color: #edcbd0;
-  background: #fff;
-  color: var(--red);
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.wallet-message {
-  min-height: 18px;
-  padding: 8px 4px 0;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.65fr);
@@ -630,6 +280,13 @@ button {
   gap: 8px;
 }
 
+.contender .team-name strong,
+.portal-group .team-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .flag-emoji {
   display: inline-grid;
   place-items: center;
@@ -643,7 +300,19 @@ button {
   height: 17px;
   flex: 0 0 auto;
   border: 1px solid var(--line);
+  border-radius: 2px;
   object-fit: cover;
+}
+
+.flag-fallback {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 17px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .team-name span {
@@ -1616,30 +1285,14 @@ footer a {
     align-items: stretch;
     flex-direction: column;
   }
-
-  .wallet-button,
   .live-pill {
     width: 100%;
     justify-content: center;
   }
 
-  .wallet-menu {
-    right: auto;
-    left: 0;
-  }
-
   .hero {
     min-height: 560px;
     padding: 28px;
-  }
-
-  .access-modal {
-    padding: 20px;
-  }
-
-  .access-wallet-options,
-  .access-steps {
-    grid-template-columns: 1fr;
   }
 
   .toolbar,
@@ -1734,8 +1387,7 @@ body {
   color: var(--gold);
 }
 
-.live-pill,
-.wallet-button {
+.live-pill {
   border-color: rgba(241, 196, 15, 0.35);
   background: rgba(255, 255, 255, 0.06);
   color: #fff;
@@ -1930,11 +1582,6 @@ select {
   background: linear-gradient(90deg, var(--gold), var(--green));
 }
 
-.wallet-menu,
-.access-modal {
-  background: #151b29;
-  color: #fff;
-}
 
 footer {
   background: rgba(21, 27, 41, 0.8);

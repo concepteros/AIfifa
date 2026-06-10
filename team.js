@@ -12,7 +12,7 @@ const COACHES = {
   USA: { name: "Mauricio Pochettino", nationality: "Argentina", since: "2024" }
 };
 
-const NEWS = {
+const LOCAL_NEWS = {
   ARG: [
     { date: "2026-05-30", title: "卫冕冠军公布赛前训练安排", summary: "球队将围绕高强度恢复和定位球演练完成最后阶段准备。" },
     { date: "2026-05-27", title: "阿根廷确认核心框架保持稳定", summary: "教练组延续成熟体系，同时为年轻球员保留轮换空间。" }
@@ -30,6 +30,16 @@ const NEWS = {
   ]
 };
 
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;"
+  })[character]);
+}
+
 function coachFor(team) {
   return COACHES[team.code] || {
     name: "官方信息待更新",
@@ -39,28 +49,17 @@ function coachFor(team) {
 }
 
 function newsFor(team) {
-  return NEWS[team.code] || [
-    {
-      date: "2026-06-01",
-      title: `${team.name} 进入世界杯备战阶段`,
-      summary: "球队最新动态将在接入新闻数据 API 后实时更新。"
-    },
-    {
-      date: "2026-05-29",
-      title: "最终名单与训练计划持续更新",
-      summary: "球员出场状态和伤病信息将在官方公告后同步。"
-    }
+  return LOCAL_NEWS[team.code] || [
+    { date: "2026-06-01", title: `${team.name} 进入世界杯备战阶段`, summary: "球队最新动态将在接入新闻数据 API 后实时更新。" },
+    { date: "2026-05-29", title: "最终名单与训练计划持续更新", summary: "球员出场状态和伤病信息将在官方公告后同步。" }
   ];
 }
 
-function escapeHtml(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (character) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#039;"
-  })[character]);
+function flagMarkup(team) {
+  if (team.flag) {
+    return `<img class="detail-team-flag" src="${escapeHtml(team.flag)}" alt="${escapeHtml(team.name)} flag" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(document.createTextNode('${escapeHtml(team.flagEmoji || "")}'))" />`;
+  }
+  return `<span class="detail-flag-emoji" aria-hidden="true">${escapeHtml(team.flagEmoji || "")}</span>`;
 }
 
 function renderTeamUpdates(updates) {
@@ -110,19 +109,17 @@ function renderNotFound() {
 
 function renderTeam(team) {
   const coach = coachFor(team);
-  const updates = newsFor(team);
   const squad = window.WORLD_CUP_SQUADS?.[team.code] || team.players;
-  const displayName = `${team.flagEmoji ? `${team.flagEmoji} ` : ""}${team.name}`;
   document.title = `${team.name} | FIFA World Cup 2026`;
   document.querySelector("#teamDetail").innerHTML = `
     <section class="detail-hero">
       <div>
-        <p class="eyebrow">${team.code} · Group ${team.group} · ${team.confederation}</p>
+        <p class="eyebrow">${escapeHtml(team.code)} · Group ${escapeHtml(team.group)} · ${escapeHtml(team.confederation)}</p>
         <div class="detail-team-title">
-          <span class="detail-flag-emoji" aria-hidden="true">${team.flagEmoji || ""}</span>
-          <h2>${team.name}</h2>
+          ${flagMarkup(team)}
+          <h2>${escapeHtml(team.name)}</h2>
         </div>
-        <p>${team.form} · 本届夺冠胜率 ${team.probability.toFixed(1)}%</p>
+        <p>${escapeHtml(team.form)} · 本届夺冠胜率 ${team.probability.toFixed(1)}%</p>
       </div>
       <div class="detail-odds">
         <span>夺冠胜率</span>
@@ -140,7 +137,7 @@ function renderTeam(team) {
           <span>${squad.length} 名已录入球员</span>
         </div>
         <details class="squad-details">
-          <summary>展开 ${displayName} 完整球员名单</summary>
+          <summary>展开 ${escapeHtml(team.name)} 完整球员名单</summary>
           <div class="squad-table-wrap">
             <table class="squad-table">
               <thead>
@@ -205,7 +202,7 @@ function renderTeam(team) {
       <div id="teamNewsList" class="news-list"></div>
     </section>
   `;
-  renderTeamUpdates(updates);
+  renderTeamUpdates(newsFor(team));
   void refreshTeamNews(team);
 }
 

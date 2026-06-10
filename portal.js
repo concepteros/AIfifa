@@ -63,11 +63,39 @@ const GROUP_SCHEDULE_META = {
   }
 };
 
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;"
+  })[character]);
+}
+
 function formatDate(value) {
   return new Intl.DateTimeFormat("zh-CN", {
     dateStyle: "medium",
     timeStyle: "short"
   }).format(new Date(value));
+}
+
+function flagMarkup(team) {
+  if (!team) return "";
+  if (team.flag) {
+    return `<img class="team-flag" src="${escapeHtml(team.flag)}" alt="${escapeHtml(team.name)} flag" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(document.createTextNode('${escapeHtml(team.flagEmoji || "")}'))" />`;
+  }
+  return `<span class="flag-emoji" aria-hidden="true">${escapeHtml(team.flagEmoji || "")}</span>`;
+}
+
+function teamLabel(team) {
+  if (!team) return "TBD";
+  return `${flagMarkup(team)}<span>${escapeHtml(team.name)}</span>`;
+}
+
+function teamText(team) {
+  if (!team) return "TBD";
+  return `${team.flagEmoji ? `${team.flagEmoji} ` : ""}${team.name}`;
 }
 
 function normalizeTeamName(value) {
@@ -79,11 +107,6 @@ function normalizeTeamName(value) {
     .trim();
 }
 
-function teamLabel(team) {
-  if (!team) return "TBD";
-  return `${team.flagEmoji ? `${team.flagEmoji} ` : ""}${team.name}`;
-}
-
 function findTeamByName(name) {
   const target = normalizeTeamName(name);
   return window.WORLD_CUP_DATA.teams.find((team) => (
@@ -93,9 +116,9 @@ function findTeamByName(name) {
   ));
 }
 
-function matchTeamLabel(name) {
+function matchTeamText(name) {
   const team = findTeamByName(name);
-  return team ? teamLabel(team) : name;
+  return team ? teamText(team) : name;
 }
 
 function renderEvents(events = []) {
@@ -105,8 +128,8 @@ function renderEvents(events = []) {
       ${events.slice(-5).reverse().map((event) => `
         <div>
           <strong>${event.time ?? "-"}'</strong>
-          <span>${event.team} · ${event.type}${event.detail ? ` · ${event.detail}` : ""}</span>
-          <small>${event.player || ""}</small>
+          <span>${escapeHtml(event.team)} · ${escapeHtml(event.type)}${event.detail ? ` · ${escapeHtml(event.detail)}` : ""}</span>
+          <small>${escapeHtml(event.player || "")}</small>
         </div>
       `).join("")}
     </div>
@@ -118,9 +141,7 @@ function renderLiveMatches(payload) {
   const updatedAt = document.querySelector("#portalFootballUpdatedAt");
   if (!list || !updatedAt) return;
 
-  updatedAt.textContent = payload.configured
-    ? `更新：${formatDate(payload.updatedAt)}`
-    : "等待开赛";
+  updatedAt.textContent = payload.configured ? `更新：${formatDate(payload.updatedAt)}` : "等待开赛";
 
   if (!payload.liveMatches.length) {
     list.innerHTML = `
@@ -135,13 +156,13 @@ function renderLiveMatches(payload) {
   list.innerHTML = payload.liveMatches.map((match) => `
     <article class="live-match-card">
       <div class="live-match-meta">
-        <span class="live-badge">${match.status} · ${match.elapsed ?? "-"}'</span>
-        <span>${match.round}${match.venue ? ` · ${match.venue}` : ""}</span>
+        <span class="live-badge">${escapeHtml(match.status)} · ${match.elapsed ?? "-"}'</span>
+        <span>${escapeHtml(match.round)}${match.venue ? ` · ${escapeHtml(match.venue)}` : ""}</span>
       </div>
       <div class="live-score">
-        <div><strong>${matchTeamLabel(match.home.name)}</strong><span>主队</span></div>
+        <div><strong>${escapeHtml(matchTeamText(match.home.name))}</strong><span>主队</span></div>
         <b>${match.home.score ?? 0} - ${match.away.score ?? 0}</b>
-        <div><strong>${matchTeamLabel(match.away.name)}</strong><span>客队</span></div>
+        <div><strong>${escapeHtml(matchTeamText(match.away.name))}</strong><span>客队</span></div>
       </div>
       ${renderEvents(match.events)}
     </article>
@@ -150,19 +171,13 @@ function renderLiveMatches(payload) {
 
 async function refreshLiveMatches() {
   try {
-    const response = await fetch("/api/football/live-matches", {
-      headers: { Accept: "application/json" }
-    });
+    const response = await fetch("/api/football/live-matches", { headers: { Accept: "application/json" } });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || "赛事数据请求失败");
     renderLiveMatches(payload);
   } catch (error) {
     console.warn(error);
-    renderLiveMatches({
-      configured: false,
-      liveMatches: [],
-      updatedAt: new Date().toISOString()
-    });
+    renderLiveMatches({ configured: false, liveMatches: [], updatedAt: new Date().toISOString() });
   }
 }
 
@@ -178,14 +193,11 @@ function renderGroups() {
   if (!target) return;
   target.innerHTML = Object.entries(groupedTeams()).map(([group, teams]) => `
     <article class="portal-group">
-      <h3>小组 ${group}</h3>
+      <h3>小组 ${escapeHtml(group)}</h3>
       ${teams.map((team) => `
         <a href="./team.html?team=${encodeURIComponent(team.code)}">
-          <strong class="team-title">
-            <span class="flag-emoji" aria-hidden="true">${team.flagEmoji || ""}</span>
-            <span>${team.name}</span>
-          </strong>
-          <span>${team.code}</span>
+          <strong class="team-title">${teamLabel(team)}</strong>
+          <span>${escapeHtml(team.code)}</span>
         </a>
       `).join("")}
     </article>
@@ -199,17 +211,15 @@ function buildGroupSchedule() {
     { matchday: 3, label: "第 3 轮", pairs: [[3, 0], [1, 2]] }
   ];
   const groups = groupedTeams();
-
   return pairings.flatMap((round) => (
     Object.entries(groups).flatMap(([group, teams]) => (
       round.pairs.map(([homeIndex, awayIndex], pairIndex) => {
         const meta = GROUP_SCHEDULE_META[round.matchday]?.[group] || {};
         return {
           date: meta.date || "TBD",
-          time: meta.time || "TBD",
           bjt: `${meta.date || "TBD"} ${meta.time || "TBD"} BJT`,
-          matchday: round.label,
           group,
+          label: round.label,
           venue: meta.venues?.[pairIndex] || "Venue TBD",
           score: "等待开赛",
           home: teams[homeIndex],
@@ -231,32 +241,17 @@ function renderGroupSchedule() {
   target.innerHTML = Object.entries(grouped).map(([date, items]) => `
     <section class="group-schedule-day">
       <div class="group-schedule-date">
-        <time>${date} BJT</time>
+        <time>${escapeHtml(date)} BJT</time>
         <span>${items.length} 场比赛</span>
       </div>
       <div class="group-schedule-matches">
         ${items.map((match) => `
           <article class="group-schedule-match">
-            <div class="schedule-cell matchup">
-              <span>对战组</span>
-              <strong>${teamLabel(match.home)} <b>vs</b> ${teamLabel(match.away)}</strong>
-            </div>
-            <div class="schedule-cell">
-              <span>时间</span>
-              <time>${match.bjt}</time>
-            </div>
-            <div class="schedule-cell">
-              <span>小组赛组别</span>
-              <strong>${match.group} · ${match.matchday}</strong>
-            </div>
-            <div class="schedule-cell venue">
-              <span>比赛地点</span>
-              <strong>${match.venue}</strong>
-            </div>
-            <div class="schedule-score">
-              <span>比分窗口</span>
-              <strong>${match.score}</strong>
-            </div>
+            <div class="schedule-cell matchup"><span>对战组</span><strong>${teamText(match.home)} <b>vs</b> ${teamText(match.away)}</strong></div>
+            <div class="schedule-cell"><span>时间</span><time>${escapeHtml(match.bjt)}</time></div>
+            <div class="schedule-cell"><span>小组赛组别</span><strong>${escapeHtml(match.group)} · ${escapeHtml(match.label)}</strong></div>
+            <div class="schedule-cell venue"><span>比赛地点</span><strong>${escapeHtml(match.venue)}</strong></div>
+            <div class="schedule-score"><span>比分窗口</span><strong>${escapeHtml(match.score)}</strong></div>
           </article>
         `).join("")}
       </div>
@@ -271,8 +266,8 @@ function renderMvpHistory() {
     <article class="portal-mvp-card">
       <span>${winner.year}</span>
       <div>
-        <h3>${winner.name}</h3>
-        <p>${winner.team}</p>
+        <h3>${escapeHtml(winner.name)}</h3>
+        <p>${escapeHtml(winner.team)}</p>
       </div>
     </article>
   `).join("");
@@ -283,7 +278,6 @@ function getVoterId() {
     const existing = localStorage.getItem("fifa2026VoterId");
     if (existing) return existing;
   } catch {}
-
   if (fallbackVoterId) return fallbackVoterId;
   const voterId = crypto.randomUUID?.() || `vote-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   fallbackVoterId = voterId;
@@ -294,22 +288,17 @@ function getVoterId() {
 }
 
 function renderPredictionResults(payload) {
-  const teamNames = new Map(window.WORLD_CUP_DATA.teams.map((team) => [team.code, teamLabel(team)]));
+  const teamNames = new Map(window.WORLD_CUP_DATA.teams.map((team) => [team.code, teamText(team)]));
   const currentName = teamNames.get(payload.currentTeamCode);
-  const current = document.querySelector("#predictionCurrent");
-  const submitButton = document.querySelector("#predictionSubmitButton");
-
-  current.textContent = `你的预测：${currentName || "尚未提交"}`;
-  submitButton.textContent = currentName ? "修改预测" : "提交预测";
-  if (payload.currentTeamCode) {
-    document.querySelector("#predictionTeam").value = payload.currentTeamCode;
-  }
+  document.querySelector("#predictionCurrent").textContent = `你的预测：${currentName || "尚未提交"}`;
+  document.querySelector("#predictionSubmitButton").textContent = currentName ? "修改预测" : "提交预测";
+  if (payload.currentTeamCode) document.querySelector("#predictionTeam").value = payload.currentTeamCode;
   document.querySelector("#predictionTotal").textContent = `${payload.total} 票`;
   document.querySelector("#predictionResults").innerHTML = payload.results.length
     ? payload.results.map((result) => `
       <div class="prediction-result">
         <div>
-          <strong>${teamNames.get(result.teamCode) || result.teamCode}</strong>
+          <strong>${escapeHtml(teamNames.get(result.teamCode) || result.teamCode)}</strong>
           <span>${result.votes} 票 · ${result.percentage.toFixed(1)}%</span>
         </div>
         <div class="bar"><span style="width:${result.percentage}%"></span></div>
@@ -319,8 +308,7 @@ function renderPredictionResults(payload) {
 }
 
 async function refreshPredictions() {
-  const voterId = encodeURIComponent(getVoterId());
-  const response = await fetch(`/api/predictions?voterId=${voterId}`, {
+  const response = await fetch(`/api/predictions?voterId=${encodeURIComponent(getVoterId())}`, {
     headers: { Accept: "application/json" }
   });
   const payload = await response.json();
@@ -331,14 +319,12 @@ async function refreshPredictions() {
 async function submitPrediction(event) {
   event.preventDefault();
   const message = document.querySelector("#predictionMessage");
-  const teamCode = document.querySelector("#predictionTeam").value;
   message.textContent = "正在提交预测...";
-
   try {
     const response = await fetch("/api/predictions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ teamCode, voterId: getVoterId() })
+      body: JSON.stringify({ teamCode: document.querySelector("#predictionTeam").value, voterId: getVoterId() })
     });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || "预测提交失败");
@@ -352,15 +338,13 @@ async function submitPrediction(event) {
 function setupPredictions() {
   const teams = [...window.WORLD_CUP_DATA.teams].sort((a, b) => a.name.localeCompare(b.name));
   document.querySelector("#predictionTeam").innerHTML = teams.map((team) => `
-    <option value="${team.code}">${teamLabel(team)} · ${team.code}</option>
+    <option value="${team.code}">${teamText(team)} · ${team.code}</option>
   `).join("");
   document.querySelector("#predictionForm").addEventListener("submit", submitPrediction);
   refreshPredictions().catch((error) => {
     document.querySelector("#predictionMessage").textContent = error.message;
   });
-  setInterval(() => {
-    refreshPredictions().catch(() => {});
-  }, PREDICTION_POLL_INTERVAL_MS);
+  setInterval(() => refreshPredictions().catch(() => {}), PREDICTION_POLL_INTERVAL_MS);
 }
 
 if (page === "groups") {
@@ -370,10 +354,5 @@ if (page === "groups") {
   setInterval(refreshLiveMatches, POLL_INTERVAL_MS);
 }
 
-if (page === "mvp") {
-  renderMvpHistory();
-}
-
-if (page === "predictions") {
-  setupPredictions();
-}
+if (page === "mvp") renderMvpHistory();
+if (page === "predictions") setupPredictions();

@@ -10,41 +10,6 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div id="accessGate" class="access-gate" hidden>
-      <section class="access-modal" role="dialog" aria-modal="true" aria-labelledby="accessTitle">
-        <p class="eyebrow">Premium Access</p>
-        <h2 id="accessTitle">连接钱包并解锁世界杯数据中心</h2>
-        <p class="access-copy">
-          <strong>一次支付 19.9 USDC，即可永久使用实时胜率、球队资料和历史数据库，这次世界杯，你一定赢。</strong>
-        </p>
-        <div class="access-steps">
-          <div class="access-step active" data-access-step="wallet"><span>1</span><strong>连接钱包</strong></div>
-          <div class="access-step" data-access-step="payment"><span>2</span><strong>支付 USDC</strong></div>
-          <div class="access-step" data-access-step="verify"><span>3</span><strong>验证解锁</strong></div>
-        </div>
-        <div id="accessWalletOptions" class="access-wallet-options">
-          <button class="access-wallet-button" data-access-wallet="phantom" type="button">
-            <span class="wallet-icon phantom-icon">P</span>
-            <span><strong>Phantom</strong><small>连接 Solana 钱包</small></span>
-          </button>
-          <button class="access-wallet-button" data-access-wallet="okx-solana" type="button">
-            <span class="wallet-icon okx-icon">OKX</span>
-            <span><strong>OKX Wallet</strong><small>连接 Solana 钱包</small></span>
-          </button>
-        </div>
-        <div id="accessPayment" class="access-payment" hidden>
-          <div class="access-wallet-summary"><span>已连接</span><strong id="accessWalletAddress"></strong></div>
-          <button id="accessPayButton" class="access-pay-button" type="button">支付 19.9 USDC</button>
-          <div class="access-waiting">
-            <span class="access-spinner"></span>
-            <div><strong>等待链上到账</strong><small>付款完成后将自动验证并永久解锁，无需填写交易签名。</small></div>
-          </div>
-          <button id="accessCheckButton" class="access-verify-button" type="button">立即检查到账</button>
-        </div>
-        <p id="accessMessage" class="access-message" aria-live="polite"></p>
-      </section>
-    </div>
-
     <header class="topbar">
       <div>
         <p class="eyebrow">FIFA World Cup 2026</p>
@@ -160,11 +125,10 @@
       </main>
     </div>
 
-    <footer><span>本页不展示博彩市场内容，球队胜率为本地数据估算。</span></footer>
+    <footer><span>CheckFIFA 以公开赛事资料、球队数据与实时 API 为基础，持续整理 2026 世界杯观赛信息。</span></footer>
 
     <script src="./data.js"></script>
     <script src="./squad-data.js"></script>
-    <script src="./vendor/solana-web3.min.js"></script>
     <script src="./app.js"></script>
   </body>
 </html>

@@ -19,8 +19,5 @@
   "bugs": {
     "url": "https://github.com/concepteros/fifa2026/issues"
   },
-  "homepage": "https://github.com/concepteros/fifa2026#readme",
-  "dependencies": {
-    "@solana/web3.js": "^1.98.4"
-  }
+  "homepage": "https://github.com/concepteros/fifa2026#readme"
 }

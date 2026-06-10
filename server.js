@@ -1,5 +1,4 @@
 const http = require("node:http");
-const crypto = require("node:crypto");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 
@@ -13,7 +12,6 @@ if (typeof process.loadEnvFile === "function") {
 
 const PORT = Number(process.env.PORT || 4173);
 const HOST = process.env.HOST || "0.0.0.0";
-const PAYMENT_RECIPIENT = process.env.MY_SOLANA_WALLET || "EwAh2VbsbgG2xWsFsDYMjmCUqq48cSkms1HATZDi3Vgq";
 const API_FOOTBALL_BASE_URL = "https://v3.football.api-sports.io";
 const API_FOOTBALL_KEY = process.env.API_FOOTBALL_KEY || "";
 const WORLD_CUP_LEAGUE_ID = "1";
@@ -22,19 +20,7 @@ const FOOTBALL_CACHE_MS = 15_000;
 const SPORTS_NEWS_URL = "https://ok.surf/api/v1/news-section";
 const ESPN_WORLD_CUP_NEWS_URL = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/news";
 const SPORTS_NEWS_CACHE_MS = 10 * 60_000;
-const AUTH_SESSION_MS = 24 * 60 * 60_000;
-const AUTH_COOKIE = "fifa2026_session";
-const FRONTEND_ACCESS_COOKIE = "fifa2026_frontend_access";
-const AUTH_COOKIE_SECURE = process.env.NODE_ENV === "production" ? "; Secure" : "";
-const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex");
-const DEVELOPER_WALLETS = new Set(
-  (process.env.DEVELOPER_WALLETS || PAYMENT_RECIPIENT)
-    .split(",")
-    .map((address) => address.trim())
-    .filter(Boolean),
-);
 const ROOT = __dirname;
-const PROTECTED_ROOT = path.join(ROOT, "protected-pages");
 const DATA_ROOT = process.env.VERCEL ? path.join("/tmp", "fifa2026-data") : path.join(ROOT, "data");
 const PREDICTION_FILE = path.join(DATA_ROOT, "predictions.json");
 const TEAM_CODES = new Set([
@@ -51,14 +37,6 @@ const MIME_TYPES = {
   ".png": "image/png",
   ".svg": "image/svg+xml",
 };
-const PROTECTED_HTML = new Set([
-  "groups.html",
-  "mvp-history.html",
-  "predictions.html",
-  "semifinals.html",
-  "team.html",
-]);
-
 let predictionWriteQueue = Promise.resolve();
 let footballCache = {
   expiresAt: 0,
@@ -75,61 +53,6 @@ function json(response, status, payload) {
     "Content-Type": "application/json; charset=utf-8",
   });
   response.end(JSON.stringify(payload));
-}
-
-function base64Url(value) {
-  return Buffer.from(value).toString("base64url");
-}
-
-function signedSession(walletAddress, mode) {
-  const payload = base64Url(JSON.stringify({
-    expiresAt: Date.now() + AUTH_SESSION_MS,
-    mode,
-    walletAddress,
-  }));
-  const signature = crypto.createHmac("sha256", SESSION_SECRET).update(payload).digest("base64url");
-  return `${payload}.${signature}`;
-}
-
-function parseCookies(request) {
-  return Object.fromEntries((request.headers.cookie || "")
-    .split(";")
-    .map((cookie) => cookie.trim().split("="))
-    .filter(([name]) => name));
-}
-
-function sessionFromRequest(request) {
-  try {
-    const token = parseCookies(request)[AUTH_COOKIE];
-    if (!token) return null;
-    const [payload, signature] = token.split(".");
-    const expected = crypto.createHmac("sha256", SESSION_SECRET).update(payload).digest("base64url");
-    if (!signature || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
-    const session = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
-    return session.expiresAt > Date.now() ? session : null;
-  } catch {
-    return null;
-  }
-}
-
-function setSessionCookie(response, walletAddress, mode) {
-  response.setHeader("Set-Cookie", `${AUTH_COOKIE}=${signedSession(walletAddress, mode)}; HttpOnly; Path=/; SameSite=Strict; Max-Age=${AUTH_SESSION_MS / 1000}${AUTH_COOKIE_SECURE}`);
-}
-
-function clearSessionCookie(response) {
-  response.setHeader("Set-Cookie", `${AUTH_COOKIE}=; HttpOnly; Path=/; SameSite=Strict; Max-Age=0${AUTH_COOKIE_SECURE}`);
-}
-
-function isAuthorizedSession(session) {
-  return session?.mode === "developer" || session?.mode === "premium";
-}
-
-function hasFrontendAccessCookie(request) {
-  return Boolean(parseCookies(request)[FRONTEND_ACCESS_COOKIE]);
-}
-
-function isAuthorizedRequest(request) {
-  return true;
 }
 
 async function readJsonBody(request) {
@@ -378,21 +301,6 @@ async function getLiveFootballData() {
   return payload;
 }
 
-function getAuthSession(request, response) {
-  const session = sessionFromRequest(request);
-  return json(response, 200, {
-    authenticated: Boolean(session),
-    authorized: isAuthorizedSession(session),
-    mode: session?.mode || "",
-    walletAddress: session?.walletAddress || "",
-  });
-}
-
-function logoutWallet(response) {
-  clearSessionCookie(response);
-  return json(response, 200, { success: true });
-}
-
 async function readPredictions() {
   try {
     return JSON.parse(await fs.readFile(PREDICTION_FILE, "utf8"));
@@ -465,24 +373,18 @@ async function handlePredictions(request, response) {
 async function serveStatic(request, response) {
   const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
   const relativePath = decodeURIComponent(url.pathname === "/" ? "index.html" : url.pathname.slice(1));
-  const protectedPage = PROTECTED_HTML.has(relativePath);
-  const filePath = protectedPage
-    ? path.resolve(PROTECTED_ROOT, relativePath)
-    : path.resolve(ROOT, relativePath);
-
-  const blockedDependency = relativePath.startsWith("node_modules/");
-  const blockedProtectedSource = relativePath.startsWith("protected-pages/");
+  const filePath = path.resolve(ROOT, relativePath);
 
   if (
-    !filePath.startsWith(protectedPage ? PROTECTED_ROOT : ROOT) ||
+    !filePath.startsWith(ROOT) ||
     relativePath.startsWith("data/") ||
-    blockedDependency ||
-    blockedProtectedSource
+    relativePath.startsWith("node_modules/")
   ) {
     response.writeHead(403);
     response.end("Forbidden");
     return;
   }
+
   try {
     const body = await fs.readFile(filePath);
     response.writeHead(200, {
@@ -496,23 +398,13 @@ async function serveStatic(request, response) {
     response.end(error.code === "ENOENT" ? "Not found" : "Server error");
   }
 }
-
 async function handleRequest(request, response) {
   if (request.method === "GET" && request.url === "/api/health") {
     return json(response, 200, {
       ok: true,
-      recipient: PAYMENT_RECIPIENT,
-      token: "USDC",
-      amount: "19.9",
+      service: "checkfifa",
+      apiFootballConfigured: Boolean(API_FOOTBALL_KEY),
     });
-  }
-
-  if (request.method === "GET" && request.url === "/api/auth/session") {
-    return getAuthSession(request, response);
-  }
-
-  if (request.method === "POST" && request.url === "/api/auth/logout") {
-    return logoutWallet(response);
   }
 
   if (request.method === "GET" && request.url === "/api/football/live-matches") {
@@ -541,7 +433,7 @@ async function handleRequest(request, response) {
       console.error("Sports news failed:", error);
       return json(response, 502, {
         articles: [],
-        error: "体育新闻暂时不可用",
+        error: "?????????",
         stale: true,
         updatedAt: new Date().toISOString(),
       });
