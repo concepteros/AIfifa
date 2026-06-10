@@ -1,0 +1,26 @@
+<view class="page">
+  <view class="hero">
+    <text class="eyebrow">Golden Ball Archive</text>
+    <text class="hero-title">历届 MVP 球员</text>
+    <text class="hero-copy">回顾 1978 年以来世界杯金球奖得主。</text>
+  </view>
+
+  <view class="panel">
+    <view class="section-head">
+      <view>
+        <text class="eyebrow">Archive</text>
+        <text class="section-title">世界杯金球奖得主</text>
+      </view>
+      <text class="muted">1978 - 2022</text>
+    </view>
+    <block wx:for="{{winners}}" wx:key="year">
+      <view class="mvp-row">
+        <text class="tag">{{item.year}}</text>
+        <view class="team-main">
+          <text class="team-name">{{item.name}}</text>
+          <text class="team-meta">{{item.team}}</text>
+        </view>
+      </view>
+    </block>
+  </view>
+</view>

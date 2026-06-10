@@ -1,0 +1,42 @@
+<view class="page">
+  <view class="hero">
+    <text class="eyebrow">{{team.code}} · Group {{team.group}}</text>
+    <text class="hero-title">{{team.label}}</text>
+    <text class="hero-copy">{{team.form}} · 夺冠胜率 {{team.probabilityText}}</text>
+  </view>
+
+  <view class="panel">
+    <view class="section-head">
+      <view>
+        <text class="eyebrow">Profile</text>
+        <text class="section-title">球队资料</text>
+      </view>
+      <text class="tag">{{team.confederation}}</text>
+    </view>
+    <view class="info-row"><text>球队代码</text><text>{{team.code}}</text></view>
+    <view class="info-row"><text>小组</text><text>{{team.group}}</text></view>
+    <view class="info-row"><text>风格</text><text>{{team.form}}</text></view>
+    <view class="info-row"><text>主教练</text><text>{{coach}}</text></view>
+  </view>
+
+  <view class="panel">
+    <view class="section-head">
+      <view>
+        <text class="eyebrow">Squad</text>
+        <text class="section-title">球员信息</text>
+      </view>
+      <text class="muted">{{players.length}} 人</text>
+    </view>
+    <block wx:for="{{players}}" wx:key="name">
+      <view class="player-card">
+        <text class="team-name">{{item.name}}</text>
+        <text class="team-meta">{{item.position}} · {{item.club}}</text>
+        <view class="player-stats">
+          <text>年龄 {{item.ageText}}</text>
+          <text>Caps {{item.capsText}}</text>
+          <text>Goals {{item.goalsText}}</text>
+        </view>
+      </view>
+    </block>
+  </view>
+</view>

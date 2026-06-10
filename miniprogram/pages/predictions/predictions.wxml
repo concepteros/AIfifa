@@ -1,0 +1,40 @@
+<view class="page">
+  <view class="hero">
+    <text class="eyebrow">Community Vote</text>
+    <text class="hero-title">你的冠军预测</text>
+    <text class="hero-copy">选择一支球队，预测谁会捧起大力神杯。</text>
+  </view>
+
+  <view class="panel">
+    <view class="section-head">
+      <view>
+        <text class="eyebrow">Ballot</text>
+        <text class="section-title">选择冠军</text>
+      </view>
+    </view>
+    <picker mode="selector" range="{{teamNames}}" value="{{selectedIndex}}" bindchange="onPickTeam">
+      <view class="picker-box">{{selectedLabel}}</view>
+    </picker>
+    <button class="primary-button submit" bindtap="submitVote">{{currentVote ? "修改预测" : "提交预测"}}</button>
+    <text class="muted">当前预测：{{currentVoteLabel}}</text>
+  </view>
+
+  <view class="panel">
+    <view class="section-head">
+      <view>
+        <text class="eyebrow">Results</text>
+        <text class="section-title">用户投票结果</text>
+      </view>
+      <text class="muted">{{totalVotes}} 票</text>
+    </view>
+    <block wx:for="{{results}}" wx:key="code">
+      <view class="vote-row">
+        <view class="team-main">
+          <text class="team-name">{{item.label}}</text>
+          <text class="team-meta">{{item.votes}} 票 · {{item.percentText}}</text>
+        </view>
+        <text class="probability">{{item.percentText}}</text>
+      </view>
+    </block>
+  </view>
+</view>

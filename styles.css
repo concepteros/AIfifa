@@ -716,20 +716,53 @@ button {
 
 .schedule-calendar {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
-.schedule-day {
+.schedule-day,
+.group-schedule-match {
   display: grid;
-  grid-template-columns: 90px minmax(0, 1fr);
+  grid-template-columns: minmax(220px, 1.4fr) minmax(150px, 0.8fr) minmax(90px, 0.5fr) minmax(180px, 1fr) 92px;
   gap: 10px;
-  align-items: start;
+  align-items: stretch;
   padding: 12px;
 }
 
-.schedule-day p {
-  grid-column: 2;
+.schedule-cell,
+.schedule-score {
+  display: grid;
+  gap: 5px;
+  align-content: start;
+  min-width: 0;
+}
+
+.schedule-cell span,
+.schedule-score span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.schedule-cell strong,
+.schedule-cell time,
+.schedule-score strong {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.schedule-score {
+  justify-items: center;
+  padding: 8px;
+  border-radius: 8px;
+  background: #edf5ef;
+  text-align: center;
+}
+
+.schedule-score strong {
+  color: var(--green);
 }
 
 .mvp-list,
@@ -1409,20 +1442,16 @@ footer a {
 
 .group-schedule-matches {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
 .group-schedule-match {
-  display: grid;
-  gap: 5px;
-  padding: 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
 }
 
-.group-schedule-match strong {
+.matchup strong {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -1430,7 +1459,7 @@ footer a {
   overflow-wrap: anywhere;
 }
 
-.group-schedule-match b {
+.matchup b {
   color: var(--muted);
   font-size: 12px;
 }
@@ -1557,8 +1586,7 @@ footer a {
     grid-template-columns: 1fr;
   }
 
-  .watch-highlights,
-  .schedule-calendar {
+  .watch-highlights {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -1622,15 +1650,12 @@ footer a {
   .watch-highlights,
   .schedule-calendar,
   .schedule-day,
+  .group-schedule-match,
   .feature-nav,
   .portal-group-grid,
   .portal-mvp-grid,
   .sports-news-grid {
     grid-template-columns: 1fr;
-  }
-
-  .schedule-day p {
-    grid-column: auto;
   }
 
   .feature-nav-item {

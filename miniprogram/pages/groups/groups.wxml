@@ -1,0 +1,64 @@
+<view class="page">
+  <view class="hero">
+    <text class="eyebrow">Group Stage</text>
+    <text class="hero-title">小组赛赛程</text>
+    <text class="hero-copy">赛程按北京时间显示，包含对战组、时间、小组、比赛地点和比分窗口。</text>
+  </view>
+
+  <view class="panel">
+    <view class="section-head">
+      <view>
+        <text class="eyebrow">Schedule</text>
+        <text class="section-title">世界杯小组赛赛程</text>
+      </view>
+      <text class="muted">BJT</text>
+    </view>
+    <block wx:for="{{schedule}}" wx:key="id">
+      <view class="schedule-row">
+        <view class="schedule-cell matchup">
+          <text class="cell-label">对战组</text>
+          <text class="cell-value">{{item.homeLabel}} vs {{item.awayLabel}}</text>
+        </view>
+        <view class="schedule-cell">
+          <text class="cell-label">时间</text>
+          <text class="cell-value">{{item.bjt}}</text>
+        </view>
+        <view class="schedule-cell">
+          <text class="cell-label">组别</text>
+          <text class="cell-value">{{item.group}} 组 · {{item.label}}</text>
+        </view>
+        <view class="schedule-cell venue">
+          <text class="cell-label">比赛地点</text>
+          <text class="cell-value">{{item.venue}}</text>
+        </view>
+        <view class="score-cell">
+          <text class="cell-label">比分</text>
+          <text class="score-value">{{item.score}}</text>
+        </view>
+      </view>
+    </block>
+  </view>
+
+  <view class="panel">
+    <view class="section-head">
+      <view>
+        <text class="eyebrow">Groups</text>
+        <text class="section-title">十二个小组</text>
+      </view>
+    </view>
+    <block wx:for="{{groups}}" wx:key="group">
+      <view class="group-card">
+        <text class="group-title">小组 {{item.group}}</text>
+        <block wx:for="{{item.teams}}" wx:key="code">
+          <view class="team-row" bindtap="openTeam" data-code="{{item.code}}">
+            <view class="team-main">
+              <text class="team-name">{{item.label}}</text>
+              <text class="team-meta">{{item.code}} · {{item.form}}</text>
+            </view>
+            <text class="probability">{{item.probabilityText}}</text>
+          </view>
+        </block>
+      </view>
+    </block>
+  </view>
+</view>

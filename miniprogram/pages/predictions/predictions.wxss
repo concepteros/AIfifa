@@ -1,0 +1,14 @@
+.picker-box {
+  min-height: 88rpx;
+  display: flex;
+  align-items: center;
+  padding: 0 22rpx;
+  border: 1rpx solid #dfe8df;
+  border-radius: 14rpx;
+  background: #fbfcfb;
+  font-weight: 900;
+}
+
+.submit {
+  margin: 18rpx 0 14rpx;
+}

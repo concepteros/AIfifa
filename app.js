@@ -130,12 +130,96 @@ function findTeamByName(name) {
 }
 
 function teamLabel(team) {
+  if (!team) return "TBD";
   return `${team.flagEmoji ? `${team.flagEmoji} ` : ""}${team.name}`;
 }
 
 function matchTeamLabel(name) {
   const team = findTeamByName(name);
   return team ? teamLabel(team) : name;
+}
+
+const GROUP_SCHEDULE_META = {
+  1: {
+    A: { date: "2026-06-12", time: "03:00", venues: ["Estadio Azteca, Mexico City", "Estadio Guadalajara"] },
+    B: { date: "2026-06-13", time: "06:00", venues: ["BMO Field, Toronto", "BC Place, Vancouver"] },
+    C: { date: "2026-06-14", time: "03:00", venues: ["Hard Rock Stadium, Miami", "Mercedes-Benz Stadium, Atlanta"] },
+    D: { date: "2026-06-13", time: "10:00", venues: ["SoFi Stadium, Los Angeles", "Levi's Stadium, San Francisco Bay Area"] },
+    E: { date: "2026-06-15", time: "03:00", venues: ["AT&T Stadium, Dallas", "NRG Stadium, Houston"] },
+    F: { date: "2026-06-15", time: "06:00", venues: ["Lumen Field, Seattle", "BC Place, Vancouver"] },
+    G: { date: "2026-06-16", time: "03:00", venues: ["MetLife Stadium, New York New Jersey", "Lincoln Financial Field, Philadelphia"] },
+    H: { date: "2026-06-16", time: "06:00", venues: ["Gillette Stadium, Boston", "Hard Rock Stadium, Miami"] },
+    I: { date: "2026-06-17", time: "03:00", venues: ["Arrowhead Stadium, Kansas City", "AT&T Stadium, Dallas"] },
+    J: { date: "2026-06-17", time: "06:00", venues: ["Mercedes-Benz Stadium, Atlanta", "NRG Stadium, Houston"] },
+    K: { date: "2026-06-18", time: "03:00", venues: ["Estadio Monterrey", "Estadio Guadalajara"] },
+    L: { date: "2026-06-18", time: "06:00", venues: ["SoFi Stadium, Los Angeles", "Levi's Stadium, San Francisco Bay Area"] }
+  },
+  2: {
+    A: { date: "2026-06-19", time: "03:00", venues: ["Estadio Azteca, Mexico City", "Estadio Monterrey"] },
+    B: { date: "2026-06-19", time: "06:00", venues: ["BMO Field, Toronto", "BC Place, Vancouver"] },
+    C: { date: "2026-06-20", time: "03:00", venues: ["Hard Rock Stadium, Miami", "Mercedes-Benz Stadium, Atlanta"] },
+    D: { date: "2026-06-20", time: "06:00", venues: ["SoFi Stadium, Los Angeles", "Lumen Field, Seattle"] },
+    E: { date: "2026-06-21", time: "03:00", venues: ["AT&T Stadium, Dallas", "NRG Stadium, Houston"] },
+    F: { date: "2026-06-21", time: "06:00", venues: ["Levi's Stadium, San Francisco Bay Area", "BC Place, Vancouver"] },
+    G: { date: "2026-06-22", time: "03:00", venues: ["MetLife Stadium, New York New Jersey", "Lincoln Financial Field, Philadelphia"] },
+    H: { date: "2026-06-22", time: "06:00", venues: ["Gillette Stadium, Boston", "Hard Rock Stadium, Miami"] },
+    I: { date: "2026-06-23", time: "03:00", venues: ["Arrowhead Stadium, Kansas City", "AT&T Stadium, Dallas"] },
+    J: { date: "2026-06-23", time: "06:00", venues: ["Mercedes-Benz Stadium, Atlanta", "NRG Stadium, Houston"] },
+    K: { date: "2026-06-24", time: "03:00", venues: ["Estadio Monterrey", "Estadio Guadalajara"] },
+    L: { date: "2026-06-24", time: "06:00", venues: ["SoFi Stadium, Los Angeles", "Levi's Stadium, San Francisco Bay Area"] }
+  },
+  3: {
+    A: { date: "2026-06-25", time: "03:00", venues: ["Estadio Azteca, Mexico City", "Estadio Guadalajara"] },
+    B: { date: "2026-06-25", time: "06:00", venues: ["BMO Field, Toronto", "BC Place, Vancouver"] },
+    C: { date: "2026-06-25", time: "10:00", venues: ["Hard Rock Stadium, Miami", "Mercedes-Benz Stadium, Atlanta"] },
+    D: { date: "2026-06-26", time: "03:00", venues: ["SoFi Stadium, Los Angeles", "Lumen Field, Seattle"] },
+    E: { date: "2026-06-26", time: "06:00", venues: ["AT&T Stadium, Dallas", "NRG Stadium, Houston"] },
+    F: { date: "2026-06-26", time: "10:00", venues: ["Levi's Stadium, San Francisco Bay Area", "BC Place, Vancouver"] },
+    G: { date: "2026-06-27", time: "03:00", venues: ["MetLife Stadium, New York New Jersey", "Lincoln Financial Field, Philadelphia"] },
+    H: { date: "2026-06-27", time: "06:00", venues: ["Gillette Stadium, Boston", "Hard Rock Stadium, Miami"] },
+    I: { date: "2026-06-27", time: "10:00", venues: ["Arrowhead Stadium, Kansas City", "AT&T Stadium, Dallas"] },
+    J: { date: "2026-06-28", time: "03:00", venues: ["Mercedes-Benz Stadium, Atlanta", "NRG Stadium, Houston"] },
+    K: { date: "2026-06-28", time: "06:00", venues: ["Estadio Monterrey", "Estadio Guadalajara"] },
+    L: { date: "2026-06-28", time: "10:00", venues: ["SoFi Stadium, Los Angeles", "Levi's Stadium, San Francisco Bay Area"] }
+  }
+};
+
+function groupedTeams() {
+  return state.data.teams.reduce((result, team) => {
+    (result[team.group] ||= []).push(team);
+    return result;
+  }, {});
+}
+
+function buildGroupSchedule() {
+  const rounds = [
+    { matchday: 1, label: "MD1", pairs: [[0, 1], [2, 3]] },
+    { matchday: 2, label: "MD2", pairs: [[0, 2], [3, 1]] },
+    { matchday: 3, label: "MD3", pairs: [[3, 0], [1, 2]] }
+  ];
+  const groups = groupedTeams();
+  return rounds.flatMap((round) => (
+    Object.entries(groups).flatMap(([group, teams]) => (
+      round.pairs.map(([homeIndex, awayIndex], pairIndex) => {
+        const meta = GROUP_SCHEDULE_META[round.matchday]?.[group] || {};
+        return {
+          date: meta.date || "TBD",
+          time: meta.time || "TBD",
+          bjt: `${meta.date || "TBD"} ${meta.time || "TBD"} BJT`,
+          label: round.label,
+          group,
+          venue: meta.venues?.[pairIndex] || "Venue TBD",
+          score: "Waiting",
+          home: teams[homeIndex],
+          away: teams[awayIndex]
+        };
+      })
+    ))
+  ));
+}
+
+function teamByCode(code) {
+  return state.data.teams.find((team) => team.code === code);
 }
 
 function setupFilters() {
@@ -686,8 +770,34 @@ function renderTeams() {
 }
 
 function renderWatchGuide() {
-  if (!els.watchGuideCalendar || !state.data.watchGuide) return;
-  const { highlights = [], calendar = [] } = state.data.watchGuide;
+  if (!els.watchGuideCalendar) return;
+  const highlights = [
+    {
+      date: "2026-06-12 03:00 BJT",
+      stage: "Opening match",
+      title: `${teamLabel(teamByCode("MEX"))} vs ${teamLabel(teamByCode("RSA"))}`,
+      detail: "Estadio Azteca, Mexico City"
+    },
+    {
+      date: "2026-06-13 06:00 BJT",
+      stage: "Host debut",
+      title: `${teamLabel(teamByCode("CAN"))} vs ${teamLabel(teamByCode("BIH"))}`,
+      detail: "BMO Field, Toronto"
+    },
+    {
+      date: "2026-06-13 10:00 BJT",
+      stage: "Host debut",
+      title: `${teamLabel(teamByCode("USA"))} vs ${teamLabel(teamByCode("PAR"))}`,
+      detail: "SoFi Stadium, Los Angeles"
+    },
+    {
+      date: "2026-07-20 03:00 BJT",
+      stage: "Final",
+      title: "World Cup Final",
+      detail: "MetLife Stadium, New York New Jersey"
+    }
+  ];
+  const calendar = buildGroupSchedule();
   els.watchGuideCalendar.innerHTML = `
     <div class="watch-highlights">
       ${highlights.map((item) => `
@@ -702,12 +812,26 @@ function renderWatchGuide() {
     <div class="schedule-calendar">
       ${calendar.map((item) => `
         <article class="schedule-day">
-          <time>${item.date}</time>
-          <div>
-            <strong>${item.stage}</strong>
-            <span>${item.groups}</span>
+          <div class="schedule-cell matchup">
+            <span>Matchup</span>
+            <strong>${teamLabel(item.home)} <b>vs</b> ${teamLabel(item.away)}</strong>
           </div>
-          <p>${item.pairing}</p>
+          <div class="schedule-cell">
+            <span>Beijing time</span>
+            <time>${item.bjt}</time>
+          </div>
+          <div class="schedule-cell">
+            <span>Group</span>
+            <strong>${item.group} · ${item.label}</strong>
+          </div>
+          <div class="schedule-cell venue">
+            <span>Venue</span>
+            <strong>${item.venue}</strong>
+          </div>
+          <div class="schedule-score">
+            <span>Score</span>
+            <strong>${item.score}</strong>
+          </div>
         </article>
       `).join("")}
     </div>

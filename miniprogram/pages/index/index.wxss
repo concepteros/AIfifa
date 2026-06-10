@@ -1,0 +1,3 @@
+.team-row:first-of-type {
+  border-top: 0;
+}
