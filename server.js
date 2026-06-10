@@ -483,12 +483,6 @@ async function serveStatic(request, response) {
     response.end("Forbidden");
     return;
   }
-  if (protectedPage && !isAuthorizedRequest(request)) {
-    response.writeHead(302, { Location: "/index.html" });
-    response.end();
-    return;
-  }
-
   try {
     const body = await fs.readFile(filePath);
     response.writeHead(200, {
@@ -519,13 +513,6 @@ async function handleRequest(request, response) {
 
   if (request.method === "POST" && request.url === "/api/auth/logout") {
     return logoutWallet(response);
-  }
-
-  if (
-    request.url.startsWith("/api/") &&
-    !isAuthorizedRequest(request)
-  ) {
-    return json(response, 401, { error: "Premium wallet session required" });
   }
 
   if (request.method === "GET" && request.url === "/api/football/live-matches") {

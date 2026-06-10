@@ -34,6 +34,7 @@ const els = {
   contendersList: document.querySelector("#contendersList"),
   teamGrid: document.querySelector("#teamGrid"),
   watchGuideCalendar: document.querySelector("#watchGuideCalendar"),
+  knockoutBracket: document.querySelector("#knockoutBracket"),
   mvpList: document.querySelector("#mvpList"),
   historyContent: document.querySelector("#historyContent"),
   liveMatchList: document.querySelector("#liveMatchList"),
@@ -264,7 +265,7 @@ function shortAddress(address) {
 }
 
 function setWalletMessage(message) {
-  els.walletMessage.textContent = message;
+  if (els.walletMessage) els.walletMessage.textContent = message;
 }
 
 function setAccessMessage(message) {
@@ -278,20 +279,24 @@ function setAccessStep(step) {
 }
 
 function setWalletMenu(open) {
+  if (!els.walletMenu) return;
   els.walletMenu.hidden = !open;
   if (open) setWalletMessage("");
 }
 
 function renderWalletState() {
   const connected = Boolean(walletState.address);
-  els.walletButtonText.textContent = connected ? shortAddress(walletState.address) : "Connect Wallet";
-  els.walletOptions.hidden = connected;
-  els.walletConnected.hidden = !connected;
-  els.walletConnectedLabel.textContent = connected
-    ? `${walletState.name} · ${shortAddress(walletState.address)}`
-    : "";
+  if (els.walletButtonText) {
+    els.walletButtonText.textContent = connected ? shortAddress(walletState.address) : "Connect Wallet";
+  }
+  if (els.walletOptions) els.walletOptions.hidden = connected;
+  if (els.walletConnected) els.walletConnected.hidden = !connected;
+  if (els.walletConnectedLabel) {
+    els.walletConnectedLabel.textContent = connected
+      ? `${walletState.name} - ${shortAddress(walletState.address)}`
+      : "";
+  }
 }
-
 function renderAccessPayment() {
   if (!walletState.address) return;
   if (DEVELOPER_WALLETS.has(walletState.address)) {
@@ -691,19 +696,19 @@ async function restoreAuthorizedSession() {
 }
 
 function setupWallet() {
-  els.walletButton.addEventListener("click", () => setWalletMenu(els.walletMenu.hidden));
-  els.walletCloseButton.addEventListener("click", () => setWalletMenu(false));
-  els.walletDisconnectButton.addEventListener("click", disconnectWallet);
-  els.walletOptions.addEventListener("click", (event) => {
+  els.walletButton?.addEventListener("click", () => setWalletMenu(els.walletMenu.hidden));
+  els.walletCloseButton?.addEventListener("click", () => setWalletMenu(false));
+  els.walletDisconnectButton?.addEventListener("click", disconnectWallet);
+  els.walletOptions?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-wallet]");
     if (button) connectWallet(button.dataset.wallet);
   });
-  els.accessWalletOptions.addEventListener("click", (event) => {
+  els.accessWalletOptions?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-access-wallet]");
     if (button) connectWallet(button.dataset.accessWallet);
   });
-  els.accessCheckButton.addEventListener("click", checkPremiumAccess);
-  els.accessPayButton.addEventListener("click", payWithConnectedWallet);
+  els.accessCheckButton?.addEventListener("click", checkPremiumAccess);
+  els.accessPayButton?.addEventListener("click", payWithConnectedWallet);
   document.addEventListener("click", (event) => {
     if (!event.target.closest(".wallet-control")) setWalletMenu(false);
   });
@@ -836,6 +841,73 @@ function renderWatchGuide() {
       `).join("")}
     </div>
   `;
+}
+
+function buildKnockoutBracket() {
+  const pick = (code) => teamByCode(code) || { code, name: "TBD", flagEmoji: "", probability: 0 };
+  return [
+    {
+      roundId: "quarter",
+      roundName: "1/4决赛",
+      matches: [
+        { id: "qf1", status: "UPCOMING", time: "等待开赛", team1: pick("BRA"), team2: pick("ESP") },
+        { id: "qf2", status: "UPCOMING", time: "等待开赛", team1: pick("ARG"), team2: pick("NED") },
+        { id: "qf3", status: "UPCOMING", time: "等待开赛", team1: pick("FRA"), team2: pick("ENG") },
+        { id: "qf4", status: "UPCOMING", time: "等待开赛", team1: pick("POR"), team2: pick("MAR") }
+      ]
+    },
+    {
+      roundId: "semi",
+      roundName: "半决赛",
+      matches: [
+        { id: "sf1", status: "PENDING", time: "等待晋级球队", team1: null, team2: null },
+        { id: "sf2", status: "PENDING", time: "等待晋级球队", team1: null, team2: null }
+      ]
+    },
+    {
+      roundId: "final",
+      roundName: "决赛",
+      matches: [
+        { id: "final", status: "PENDING", time: "等待晋级球队", team1: null, team2: null }
+      ]
+    }
+  ];
+}
+
+function renderBracketTeam(team) {
+  if (!team) {
+    return `
+      <div class="team-info">
+        <span class="flag">待</span>
+        <span>TBD</span>
+      </div>
+      <div class="score">-</div>
+    `;
+  }
+  return `
+    <div class="team-info">
+      <span class="flag">${team.flagEmoji || ""}</span>
+      <span>${team.name}</span>
+    </div>
+    <div class="score">-</div>
+  `;
+}
+
+function renderKnockoutBracket() {
+  if (!els.knockoutBracket) return;
+  const rounds = buildKnockoutBracket();
+  els.knockoutBracket.innerHTML = rounds.map((round) => `
+    <div class="round round-${round.roundId}">
+      <div class="round-title">${round.roundName}</div>
+      ${round.matches.map((match) => `
+        <article class="match-box ${match.status === "LIVE" ? "live" : ""}" data-match-id="${match.id}">
+          <div class="match-status">${match.status === "LIVE" ? `● ${match.time}` : match.time}</div>
+          <div class="team-row">${renderBracketTeam(match.team1)}</div>
+          <div class="team-row">${renderBracketTeam(match.team2)}</div>
+        </article>
+      `).join("")}
+    </div>
+  `).join("");
 }
 
 function renderMvp() {
@@ -1023,6 +1095,7 @@ function render() {
   renderMeta();
   renderContenders();
   renderWatchGuide();
+  renderKnockoutBracket();
   renderMvp();
   renderTeams();
   renderHistory();

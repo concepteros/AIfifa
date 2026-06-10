@@ -103,7 +103,7 @@ function renderNotFound() {
     <section class="panel detail-empty">
       <p class="eyebrow">Not Found</p>
       <h2>没有找到这支球队。</h2>
-      <a class="back-link" href="./">返回球队列表</a>
+      <a class="back-link" href="./index.html">返回球队列表</a>
     </section>
   `;
 }
@@ -113,7 +113,7 @@ function renderTeam(team) {
   const updates = newsFor(team);
   const squad = window.WORLD_CUP_SQUADS?.[team.code] || team.players;
   const displayName = `${team.flagEmoji ? `${team.flagEmoji} ` : ""}${team.name}`;
-  document.title = `${team.name} · 世界杯数据中心`;
+  document.title = `${team.name} | FIFA World Cup 2026`;
   document.querySelector("#teamDetail").innerHTML = `
     <section class="detail-hero">
       <div>
@@ -122,7 +122,7 @@ function renderTeam(team) {
           <span class="detail-flag-emoji" aria-hidden="true">${team.flagEmoji || ""}</span>
           <h2>${team.name}</h2>
         </div>
-        <p>${team.form} · 本届夺冠隐含胜率 ${team.probability.toFixed(1)}%</p>
+        <p>${team.form} · 本届夺冠胜率 ${team.probability.toFixed(1)}%</p>
       </div>
       <div class="detail-odds">
         <span>夺冠胜率</span>
@@ -156,12 +156,12 @@ function renderTeam(team) {
               <tbody>
                 ${squad.map((player) => `
                   <tr>
-                    <td><strong>${player.name}</strong></td>
-                    <td>${player.position}</td>
-                    <td>${player.age ?? "-"}</td>
-                    <td>${player.caps ?? "-"}</td>
-                    <td>${player.goals ?? "-"}</td>
-                    <td>${player.club}</td>
+                    <td><strong>${escapeHtml(player.name)}</strong></td>
+                    <td>${escapeHtml(player.position)}</td>
+                    <td>${escapeHtml(player.age ?? "-")}</td>
+                    <td>${escapeHtml(player.caps ?? "-")}</td>
+                    <td>${escapeHtml(player.goals ?? "-")}</td>
+                    <td>${escapeHtml(player.club)}</td>
                   </tr>
                 `).join("")}
               </tbody>
@@ -176,19 +176,19 @@ function renderTeam(team) {
       <aside>
         <article class="panel coach-panel">
           <p class="eyebrow">Head Coach</p>
-          <h3>${coach.name}</h3>
-          <p>${coach.nationality} · 执教起始 ${coach.since}</p>
+          <h3>${escapeHtml(coach.name)}</h3>
+          <p>${escapeHtml(coach.nationality)} · 执教起始 ${escapeHtml(coach.since)}</p>
         </article>
 
         <article class="panel">
           <p class="eyebrow">Team Profile</p>
           <div class="profile-list">
-            <div><span>代码</span><strong>${team.code}</strong></div>
-            <div><span>国家代码</span><strong>${team.iso2 || "-"}</strong></div>
-            <div><span>赛区</span><strong>${team.confederation}</strong></div>
-            <div><span>小组</span><strong>${team.group}</strong></div>
-            <div><span>风格</span><strong>${team.form}</strong></div>
-            <div><span>公开数据</span><a href="${team.sourceRepository || "https://github.com/rezarahiminia/worldcup2026"}" target="_blank" rel="noreferrer">worldcup2026</a></div>
+            <div><span>代码</span><strong>${escapeHtml(team.code)}</strong></div>
+            <div><span>国家代码</span><strong>${escapeHtml(team.iso2 || "-")}</strong></div>
+            <div><span>赛区</span><strong>${escapeHtml(team.confederation)}</strong></div>
+            <div><span>小组</span><strong>${escapeHtml(team.group)}</strong></div>
+            <div><span>风格</span><strong>${escapeHtml(team.form)}</strong></div>
+            <div><span>公开数据</span><a href="${escapeHtml(team.sourceRepository || "https://github.com/rezarahiminia/worldcup2026")}" target="_blank" rel="noreferrer">worldcup2026</a></div>
           </div>
         </article>
       </aside>

@@ -3,23 +3,26 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>球队详情 · 世界杯数据中心</title>
+    <title>球队详情 | FIFA World Cup 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./styles.css" />
     <script src="./access-guard.js"></script>
   </head>
   <body>
-    <header class="topbar">
+    <header class="portal-topbar">
+      <a class="back-link" href="./index.html">返回主页</a>
       <div>
         <p class="eyebrow">FIFA World Cup 2026</p>
-        <h1>球队详情</h1>
+        <h1>World<span>Cup</span></h1>
       </div>
-      <a class="back-link" href="./">返回数据中心</a>
     </header>
 
-    <main id="teamDetail"></main>
+    <main id="teamDetail" class="portal-main"></main>
 
     <footer>
-      <span>数据说明：球员名单与球队动态为原型资料，正式上线前建议接入体育数据和新闻 API。</span>
+      <span>数据说明：球员名单与球队动态为原型资料，正式上线前可继续接入官方体育数据和新闻 API。</span>
     </footer>
 
     <script src="./data.js"></script>
