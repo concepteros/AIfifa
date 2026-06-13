@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Prediction Copytrader",
+  "version": "0.1.0",
+  "description": "Local dashboard for prediction-market monitoring and controlled copy-trading automation.",
+  "action": {
+    "default_title": "Prediction Copytrader"
+  },
+  "background": {
+    "service_worker": "src/background/service-worker.js",
+    "type": "module"
+  },
+  "permissions": ["storage"],
+  "host_permissions": ["http://127.0.0.1:4787/*"]
+}
