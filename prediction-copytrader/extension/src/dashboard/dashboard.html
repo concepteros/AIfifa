@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Prediction Copytrader</title>
+    <link rel="stylesheet" href="./dashboard.css" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div>
+        <p class="eyebrow">Local Executor</p>
+        <h1>Prediction Copytrader</h1>
+      </div>
+      <nav class="tabs" aria-label="Panels">
+        <button class="tab is-active" type="button" data-panel="strategy">策略</button>
+        <button class="tab" type="button" data-panel="monitor">监控</button>
+        <button class="tab" type="button" data-panel="copyTrading">跟单</button>
+        <button class="tab" type="button" data-panel="scraper">刮刀</button>
+        <button class="tab" type="button" data-panel="profit">收益</button>
+      </nav>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <p id="connectionLabel" class="eyebrow">Connecting</p>
+          <h2 id="panelTitle">策略</h2>
+        </div>
+        <button id="pauseButton" class="danger" type="button">紧急暂停</button>
+      </header>
+      <section id="statusBanner" class="status-banner">正在连接本地执行器...</section>
+      <section id="panelContent" class="panel-grid"></section>
+    </main>
+    <script type="module" src="./dashboard.js"></script>
+  </body>
+</html>
