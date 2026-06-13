@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { createServer } from "../src/server.js";
+import { createServer, isDirectRun } from "../src/server.js";
 
 async function startTestServer() {
   const server = createServer();
@@ -78,4 +78,15 @@ test("POST /api/emergency-pause rejects invalid payload", async () => {
   } finally {
     await server.close();
   }
+});
+
+test("isDirectRun matches Windows argv paths", () => {
+  assert.equal(
+    isDirectRun("file:///C:/workspace/prediction-copytrader/executor/src/server.js", "C:\\workspace\\prediction-copytrader\\executor\\src\\server.js"),
+    true
+  );
+  assert.equal(
+    isDirectRun("file:///C:/workspace/prediction-copytrader/executor/src/server.js", "C:\\workspace\\prediction-copytrader\\executor\\src\\other.js"),
+    false
+  );
 });

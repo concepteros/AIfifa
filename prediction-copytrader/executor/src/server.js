@@ -1,10 +1,17 @@
 import http from "node:http";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { DEFAULT_PORT } from "./default-state.js";
 import { sendJson, readJsonBody } from "./http-utils.js";
 import { createRuntimeState, getStatus, setEmergencyPause } from "./runtime-state.js";
 
 const HOST = "127.0.0.1";
+
+export function isDirectRun(metaUrl, argvPath) {
+  if (!argvPath) return false;
+  return fileURLToPath(metaUrl) === path.resolve(argvPath);
+}
 
 export function createServer({ runtime = createRuntimeState() } = {}) {
   return http.createServer(async (request, response) => {
@@ -38,7 +45,7 @@ export function createServer({ runtime = createRuntimeState() } = {}) {
   });
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isDirectRun(import.meta.url, process.argv[1])) {
   const port = Number(process.env.PORT || DEFAULT_PORT);
   const server = createServer({ runtime: createRuntimeState({ port }) });
 
