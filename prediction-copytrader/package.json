@@ -1,0 +1,11 @@
+{
+  "name": "prediction-copytrader",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start:executor": "node executor/src/server.js",
+    "test": "node --test executor/test extension/test",
+    "check": "node --check executor/src/server.js && node --check extension/src/background/service-worker.js && node --check extension/src/services/executor-client.js && node --check extension/src/dashboard/dashboard.js"
+  }
+}
