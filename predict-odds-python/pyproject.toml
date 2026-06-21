@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "predict-odds"
+version = "0.1.0"
+description = "Fetch football odds from Predict API and return structured JSON."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Predict Odds Maintainers" }]
+license = { text = "MIT" }
+dependencies = ["APScheduler>=3.10,<4", "python-telegram-bot>=21,<23"]
+
+[project.scripts]
+predict-odds = "predict_odds.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

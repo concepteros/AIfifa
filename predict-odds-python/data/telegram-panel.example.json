@@ -1,0 +1,15 @@
+{
+  "telegram_panel": {
+    "enabled": true,
+    "bot_token_env": "TELEGRAM_BOT_TOKEN",
+    "allowed_chat_ids": [],
+    "scan_config": "./bot-scan.json",
+    "database": "../out/bot.sqlite",
+    "approvals": "../out/telegram-approvals.json",
+    "poll_interval": 1.0,
+    "limits": {
+      "daily_stake": 100.0,
+      "max_single_stake": 25.0
+    }
+  }
+}

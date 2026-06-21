@@ -1,0 +1,16 @@
+services:
+  predict-odds:
+    build: .
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./out:/app/out
+    command:
+      - predict-odds
+      - doctor
+      - --config
+      - /app/data/bot-scan.json
+      - --mode
+      - scan
+      - --skip-network

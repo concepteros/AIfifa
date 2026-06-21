@@ -1,0 +1,4 @@
+interface:
+  display_name: "AI Football Betting Bot"
+  short_description: "Run and operate the AI football betting bot in Hermes/Codex."
+  default_prompt: "Use this skill to configure, run, and troubleshoot the AI football betting bot and Telegram control panel."
