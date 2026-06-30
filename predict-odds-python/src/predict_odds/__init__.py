@@ -25,12 +25,43 @@ from .migrations import migrate_database
 from .optimize import optimize_parameters
 from .prediction import predict_match
 from .polymarket import PolymarketClient
+from .predict_fun_betting import (
+    BetResult,
+    SafetyLimits,
+    auto_bet_from_decisions,
+    bet_on_match,
+    check_safety_gates,
+    get_wallet_balance,
+    lookup_market_by_slug,
+    place_bet,
+)
 from .probability_metrics import evaluate_probability_predictions
 from .promotion import promote_strategy
 from .repository import BotRepository
 from .retry import retry_call
 from .results import MatchResult, load_results
 from .settlement import build_performance_report, settle_database, settle_recommendation
+from .sentiment import analyze_match_sentiment, MatchSentiment
+from .supplementary import (
+    get_weather,
+    get_referee_profile,
+    get_injury_report,
+    get_total_injury_impact,
+    get_match_supplementary_context,
+    weather_impact_summary,
+    referee_impact_summary,
+    injury_report_summary,
+    InjuredPlayer,
+    RefereeProfile,
+    WeatherData,
+)
+from .tactics import (
+    TacticalProfile,
+    analyze_tactical_matchup,
+    generate_tactical_analysis,
+    get_team_profile,
+    list_all_teams,
+)
 from .safety import evaluate_safety_gates
 from .sportmonks import SportmonksClient
 from .the_odds_api import TheOddsAPIClient
@@ -39,13 +70,16 @@ from .walk_forward import parse_walk_forward_window, run_walk_forward
 from .workflow import run_workflow
 
 __all__ = [
+    "BetResult",
     "BotRepository",
     "ClosingOdds",
     "Fixture",
     "FootballOddsResponse",
+    "InjuredPlayer",
     "InjuryRecord",
     "MatchRecord",
     "MatchResult",
+    "MatchSentiment",
     "PredictAPIError",
     "PredictAuthenticationError",
     "PredictConfigError",
@@ -54,26 +88,49 @@ __all__ = [
     "PolymarketClient",
     "PredictResponseError",
     "PredictValidationError",
+    "RefereeProfile",
+    "SafetyLimits",
     "SportmonksClient",
+    "TacticalProfile",
     "TheOddsAPIClient",
     "TeamAliasResolver",
+    "WeatherData",
+    "analyze_match_sentiment",
+    "analyze_tactical_matchup",
     "apply_promoted_decision_config",
+    "auto_bet_from_decisions",
+    "bet_on_match",
     "build_betting_decisions",
     "build_daily_digest",
     "build_match_features",
-    "check_bot_health",
-    "calibrate_market_probabilities",
     "build_performance_report",
+    "calibrate_market_probabilities",
+    "check_bot_health",
+    "check_safety_gates",
+    "evaluate_probability_predictions",
+    "evaluate_safety_gates",
     "find_closing_odds",
-    "load_env_file",
+    "generate_tactical_analysis",
+    "get_injury_report",
+    "get_match_supplementary_context",
+    "get_referee_profile",
+    "get_team_profile",
+    "get_total_injury_impact",
+    "get_wallet_balance",
+    "get_weather",
+    "injury_report_summary",
+    "list_all_teams",
     "load_closing_odds",
+    "load_env_file",
     "load_results",
+    "lookup_market_by_slug",
     "migrate_database",
     "optimize_parameters",
-    "predict_match",
-    "evaluate_probability_predictions",
-    "promote_strategy",
     "parse_walk_forward_window",
+    "place_bet",
+    "predict_match",
+    "promote_strategy",
+    "referee_impact_summary",
     "retry_call",
     "run_backtest",
     "run_demo",
@@ -82,6 +139,6 @@ __all__ = [
     "scan_upcoming_matches",
     "settle_database",
     "settle_recommendation",
-    "evaluate_safety_gates",
     "validate_strategy",
+    "weather_impact_summary",
 ]

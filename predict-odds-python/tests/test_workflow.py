@@ -19,12 +19,12 @@ class WorkflowTest(unittest.TestCase):
             result = run_workflow(config_path, telegram_sender=sent.append)
 
             self.assertEqual(result["fixture"]["home_team"], "Arsenal")
-            self.assertEqual(result["prediction"]["model"], "poisson_v1")
+            self.assertEqual(result["prediction"]["model"], "poisson_v2")
             self.assertEqual(result["decisions"]["recommendations"][0]["action"], "bet")
             result_path = Path(result["result_path"])
             self.assertTrue(result_path.exists())
             persisted = json.loads(result_path.read_text(encoding="utf-8"))
-            self.assertEqual(persisted["prediction"]["model"], "poisson_v1")
+            self.assertEqual(persisted["prediction"]["model"], "poisson_v2")
             self.assertEqual(len(sent), 1)
             self.assertIn("Arsenal vs Chelsea", sent[0])
 
@@ -62,7 +62,7 @@ class WorkflowTest(unittest.TestCase):
         output = "".join(call.args[0] for call in stdout.write.call_args_list if call.args)
         payload = json.loads(output)
         self.assertEqual(payload["fixture"]["away_team"], "Chelsea")
-        self.assertEqual(payload["prediction"]["model"], "poisson_v1")
+        self.assertEqual(payload["prediction"]["model"], "poisson_v2")
 
     def test_configures_daily_scheduler_job(self):
         scheduler = FakeScheduler()

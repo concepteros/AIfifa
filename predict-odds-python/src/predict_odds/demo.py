@@ -63,7 +63,7 @@ def _write_demo_files(root: Path) -> dict[str, Path]:
         },
         "decision": {
             "bankroll": 1000,
-            "min_edge": 0.03,
+            "min_edge": 0.01,
             "fractional_kelly": 0.25,
             "max_stake_fraction": 0.05,
         },

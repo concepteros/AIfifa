@@ -4,14 +4,17 @@ import argparse
 import json
 import os
 import sys
+from datetime import datetime, timezone
 
 from .bot_scanner import scan_upcoming_matches
+from .bot_scanner import format_kelly_summary
 from .backtest import run_backtest
 from .config_writer import apply_promoted_decision_config
 from .client import PredictOddsClient
 from .client import DEFAULT_API_URL
 from .data_sources import Fixture, load_injuries, load_matches
 from .decision import build_betting_decisions
+from .deep_analysis import gather_analysis_context, load_match_json
 from .demo import run_demo
 from .doctor import check_bot_health
 from .digest import build_daily_digest
@@ -26,6 +29,8 @@ from .promotion import promote_strategy
 from .probability_metrics import evaluate_probability_predictions
 from .safety import evaluate_safety_gates
 from .scheduler import configure_daily_job
+from .sentiment import analyze_match_sentiment
+from .aliases import TeamAliasResolver
 from .scheduler import create_blocking_scheduler
 from .settlement import build_performance_report
 from .settlement import settle_database
@@ -93,6 +98,7 @@ def build_parser() -> argparse.ArgumentParser:
     scan_parser.add_argument("--config", required=True, help="Path to scanner JSON config.")
     scan_parser.add_argument("--events-file", help="Optional local The Odds API events JSON for dry runs and tests.")
     scan_parser.add_argument("--compact", action="store_true", help="Print compact JSON.")
+    scan_parser.add_argument("--summary", action="store_true", help="Print human-readable Kelly summary instead of JSON.")
 
     doctor_parser = subparsers.add_parser("doctor", help="Check bot configuration, files, environment, and optional connectivity.")
     doctor_parser.add_argument("--config", required=True, help="Path to workflow or scanner JSON config.")
@@ -210,8 +216,67 @@ def build_parser() -> argparse.ArgumentParser:
     demo_parser.add_argument("--output", required=True, help="Output directory for demo files.")
     demo_parser.add_argument("--compact", action="store_true", help="Print compact JSON.")
 
+    # ── Predict.fun betting ──
+    bet_parser = subparsers.add_parser("bet", help="Place a bet on Predict.fun World Cup match markets.")
+    bet_parser.add_argument("--market-id", type=int, help="Predict.fun market ID (e.g. 163340).")
+    bet_parser.add_argument("--match-slug", help="Match slug (e.g. fifwc-tun-jpn-2026-06-21).")
+    bet_parser.add_argument("--bet-type", default="home",
+                            help="Bet type: home, away, draw, over_2_5, under_2_5, exact_score_X-Y.")
+    bet_parser.add_argument("--side", help="Buy or sell (only with --market-id).")
+    bet_parser.add_argument("--amount", type=float, default=10.0, help="Total USDC to bet (default: 10).")
+    bet_parser.add_argument("--price", type=float, help="Price per share (auto-fetched if omitted).")
+    bet_parser.add_argument("--size", type=float, help="Number of shares (calculated if omitted).")
+    bet_parser.add_argument("--dry-run", action="store_true", default=True,
+                            help="Simulate without placing order (default: True for safety).")
+    bet_parser.add_argument("--live", dest="dry_run", action="store_false",
+                            help="Actually place the bet (overrides --dry-run).")
+    bet_parser.add_argument("--yes", "-y", action="store_true", help="Skip confirmation prompt.")
+    bet_parser.add_argument("--max-bet", type=float, default=50.0, help="Max single bet in USDC (default: 50).")
+    bet_parser.add_argument("--daily-limit", type=float, default=200.0,
+                            help="Max daily total in USDC (default: 200).")
+
     panel_parser = subparsers.add_parser("telegram-panel", help="Run the interactive Telegram control panel.")
     panel_parser.add_argument("--config", required=True, help="Path to Telegram panel JSON config.")
+
+    analyze_parser = subparsers.add_parser("analyze", help="Deep match analysis: odds, market, Poisson, tactical breakdown.")
+    analyze_parser.add_argument("--match", required=True, help="Path to match result JSON (from out/ directory).")
+    analyze_parser.add_argument("--no-prompt", action="store_true", help="Output structured context JSON instead of LLM prompt.")
+
+    train_parser = subparsers.add_parser("train", help="Train a machine learning model on historical match data.")
+    train_parser.add_argument("--model", required=True, choices=["xgboost"], help="Model type to train.")
+    train_parser.add_argument("--data", required=True, help="Path to fbref.csv match data.")
+    train_parser.add_argument("--output", default="data/xgboost_model.json", help="Path to save trained model.")
+    train_parser.add_argument("--compact", action="store_true", help="Print compact JSON.")
+
+    # ── Sell / take-profit ──
+    sell_check_parser = subparsers.add_parser("sell-check", help="Check open Predict.fun positions for take-profit triggers.")
+    sell_check_parser.add_argument("--position-file", required=True, help="Path to positions JSON file.")
+    sell_check_parser.add_argument("--live", action="store_true", help="Execute sell orders (default: dry-run).")
+    sell_check_parser.add_argument("--compact", action="store_true", help="Print compact output.")
+
+    sell_track_parser = subparsers.add_parser("sell-track", help="Track a new position for take-profit monitoring.")
+    sell_track_parser.add_argument("--position-file", required=True, help="Path to positions JSON file.")
+    sell_track_parser.add_argument("--market-id", required=True, help="Predict.fun market ID.")
+    sell_track_parser.add_argument("--token-id", required=True, help="On-chain token ID.")
+    sell_track_parser.add_argument("--entry-price", type=float, required=True, help="Entry price per share in cents.")
+    sell_track_parser.add_argument("--shares", type=float, required=True, help="Number of shares bought.")
+    sell_track_parser.add_argument("--match-name", default="", help="Human-readable match name.")
+    sell_track_parser.add_argument("--outcome", default="Yes", help="Outcome (Yes/No).")
+
+    sell_now_parser = subparsers.add_parser("sell-now", help="Manually sell a percentage of a position (25%, 50%, 100%).")
+    sell_now_parser.add_argument("--position-file", required=True, help="Path to positions JSON file.")
+    sell_now_parser.add_argument("--market-id", required=True, help="Predict.fun market ID to sell.")
+    sell_now_parser.add_argument("--pct", type=int, required=True, choices=[25, 50, 100], help="Percentage of position to sell (25, 50, or 100).")
+    sell_now_parser.add_argument("--live", action="store_true", help="Execute sell order (default: dry-run).")
+    sell_now_parser.add_argument("--limit-price", type=float, help="Limit price in cents (auto-fetched as market order if omitted).")
+
+    sentiment_parser = subparsers.add_parser("sentiment", help="Analyze public sentiment for a football match.")
+    sentiment_parser.add_argument("--match", help="Match slug or description (e.g. fifwc-tun-jpn-2026-06-21).")
+    sentiment_parser.add_argument("--home-team", help="Home team name (overrides --match parsing).")
+    sentiment_parser.add_argument("--away-team", help="Away team name (overrides --match parsing).")
+    sentiment_parser.add_argument("--alias-file", help="Path to team alias JSON file.")
+    sentiment_parser.add_argument("--no-fetch", action="store_true", help="Skip live web fetch (useful for testing).")
+    sentiment_parser.add_argument("--compact", action="store_true", help="Print compact JSON.")
 
     return parser
 
@@ -224,7 +289,7 @@ def main(argv: list[str] | None = None) -> int:
     if not argv:
         build_parser().print_help()
         return 2
-    command_names = {"odds", "sportmonks-fixture", "features", "predict", "decide", "run", "schedule", "scan", "doctor", "settle", "report", "backtest", "optimize", "validate", "walk-forward", "promote", "apply-config", "evaluate-probs", "safety", "digest", "llm-prompt", "migrate-db", "demo", "telegram-panel", "-h", "--help"}
+    command_names = {"odds", "sportmonks-fixture", "features", "predict", "decide", "run", "schedule", "scan", "doctor", "settle", "report", "backtest", "optimize", "validate", "walk-forward", "promote", "apply-config", "evaluate-probs", "safety", "digest", "llm-prompt", "migrate-db", "demo", "telegram-panel", "analyze", "bet", "sentiment", "train", "sell-check", "sell-track", "sell-now", "-h", "--help"}
     if argv and argv[0] not in command_names and not argv[0].startswith("-"):
         argv = ["odds", *argv]
     parser = build_parser()
@@ -282,7 +347,10 @@ def main(argv: list[str] | None = None) -> int:
                 args.config,
                 odds_events=_load_events_file(args.events_file) if args.events_file else None,
             )
-            print(json.dumps(result, ensure_ascii=False, indent=None if args.compact else 2))
+            if getattr(args, 'summary', False):
+                print(format_kelly_summary(result))
+            else:
+                print(json.dumps(result, ensure_ascii=False, indent=None if args.compact else 2))
             return 0
         if command == "doctor":
             result = check_bot_health(
@@ -413,6 +481,76 @@ def main(argv: list[str] | None = None) -> int:
         if command == "telegram-panel":
             run_telegram_panel(args.config)
             return 0
+        if command == "bet":
+            from .predict_fun_betting import bet_cli
+            return bet_cli(args)
+        if command == "sentiment":
+            home, away = _resolve_sentiment_teams(args)
+            resolver = None
+            if args.alias_file:
+                resolver = TeamAliasResolver.from_file(args.alias_file)
+            fetch_news = None if args.no_fetch else None  # use default fetcher when not suppressed
+            result = analyze_match_sentiment(
+                home, away,
+                alias_resolver=resolver,
+                articles=[] if args.no_fetch else None,
+            )
+            print(json.dumps({
+                "home_team": result.home_team,
+                "away_team": result.away_team,
+                "home_sentiment": result.home_sentiment,
+                "away_sentiment": result.away_sentiment,
+                "sources": result.sources,
+                "summary": result.summary,
+            }, ensure_ascii=False, indent=None if args.compact else 2))
+            return 0
+        if command == "analyze":
+            match = load_match_json(args.match)
+            if args.no_prompt:
+                context = gather_analysis_context(match)
+                print(json.dumps(context, ensure_ascii=False, indent=2))
+            else:
+                from .deep_analysis import build_deep_analysis_prompt
+                context = gather_analysis_context(match)
+                print(build_deep_analysis_prompt(context))
+            return 0
+        if command == "train":
+            from .ml_model import train_and_save
+            result = train_and_save(args.data, save_path=args.output)
+            print(json.dumps(result, ensure_ascii=False, indent=None if args.compact else 2))
+            return 0
+        if command == "sell-check":
+            from .predict_fun_sell import sell_check_cli
+            output = sell_check_cli(args.position_file, dry_run=not args.live)
+            print(output)
+            return 0
+        if command == "sell-track":
+            from .predict_fun_sell import Position, PositionTracker
+            tracker = PositionTracker.load(args.position_file)
+            tracker.add_position(Position(
+                market_id=args.market_id,
+                token_id=args.token_id,
+                side="buy",
+                entry_price=args.entry_price,
+                shares=args.shares,
+                entry_time=datetime.now(timezone.utc).isoformat(),
+                match_name=args.match_name,
+                outcome=args.outcome,
+            ))
+            print(f"✅ 已添加持仓: {args.match_name} {args.outcome} @ {args.entry_price}¢ × {args.shares}")
+            print(f"   止盈: +25%/+50%/+100%")
+            return 0
+        if command == "sell-now":
+            from .predict_fun_sell import sell_now_cli
+            output = sell_now_cli(
+                args.position_file,
+                args.market_id,
+                args.pct,
+                dry_run=not args.live,
+                limit_price=args.limit_price,
+            )
+            print(output)
+            return 0
         client = PredictOddsClient(
             api_key=args.api_key or os.environ.get("PREDICT_API_KEY", ""),
             api_url=args.api_url or os.environ.get("PREDICT_API_URL", DEFAULT_API_URL),
@@ -441,6 +579,74 @@ def _load_json_file(path: str) -> dict[str, object]:
 def _load_json_or_list_file(path: str) -> object:
     with open(path, "r", encoding="utf-8-sig") as handle:
         return json.load(handle)
+
+
+def _resolve_sentiment_teams(args: argparse.Namespace) -> tuple[str, str]:
+    """Extract home/away teams from CLI args or parse from --match slug."""
+    if args.home_team and args.away_team:
+        return args.home_team, args.away_team
+    if args.match:
+        return _parse_teams_from_slug(args.match)
+    raise PredictAPIError("Either --match or both --home-team/--away-team must be provided.")
+
+
+def _parse_teams_from_slug(slug: str) -> tuple[str, str]:
+    """Parse team names from a match slug like 'fifwc-tun-jpn-2026-06-21'.
+
+    Returns (home_team, away_team) with common abbreviations resolved.
+    """
+    # Map FIFA three-letter codes to team names
+    _FIFA_CODE_MAP: dict[str, str] = {
+        "arg": "Argentina",
+        "aus": "Australia",
+        "bel": "Belgium",
+        "bra": "Brazil",
+        "can": "Canada",
+        "chi": "Chile",
+        "cmr": "Cameroon",
+        "col": "Colombia",
+        "crc": "Costa Rica",
+        "cro": "Croatia",
+        "den": "Denmark",
+        "ecu": "Ecuador",
+        "egy": "Egypt",
+        "eng": "England",
+        "esp": "Spain",
+        "fra": "France",
+        "ger": "Germany",
+        "gha": "Ghana",
+        "irn": "Iran",
+        "ita": "Italy",
+        "jpn": "Japan",
+        "kor": "South Korea",
+        "ksa": "Saudi Arabia",
+        "mar": "Morocco",
+        "mex": "Mexico",
+        "ned": "Netherlands",
+        "nga": "Nigeria",
+        "pol": "Poland",
+        "por": "Portugal",
+        "qat": "Qatar",
+        "sen": "Senegal",
+        "srb": "Serbia",
+        "sui": "Switzerland",
+        "tun": "Tunisia",
+        "uru": "Uruguay",
+        "usa": "United States",
+        "wal": "Wales",
+    }
+
+    parts = slug.split("-")
+    # Look for two adjacent 3-letter codes (home, away)
+    for i in range(len(parts) - 1):
+        a, b = parts[i].lower(), parts[i + 1].lower()
+        if len(a) == 3 and len(b) == 3 and a in _FIFA_CODE_MAP and b in _FIFA_CODE_MAP:
+            return _FIFA_CODE_MAP[a], _FIFA_CODE_MAP[b]
+
+    # Fallback: treat first two parts as team names
+    if len(parts) >= 2:
+        return parts[0].capitalize(), parts[1].capitalize()
+    raise PredictAPIError(f"Cannot parse teams from slug: {slug}")
 
 
 def _load_events_file(path: str) -> list[dict[str, object]]:

@@ -1,0 +1,145 @@
+team,player,position,market_value_eur,status,days_out
+Algeria,Player_Alge_1,Forward,93384972,fit,0
+Algeria,Player_Alge_2,Midfielder,58402814,fit,0
+Algeria,Player_Alge_3,Defender,102701236,fit,0
+Argentina,Player_Arge_1,Forward,115443315,fit,0
+Argentina,Player_Arge_2,Midfielder,71145035,fit,0
+Argentina,Player_Arge_3,Defender,51995697,fit,0
+Australia,Player_Aust_1,Forward,33251923,fit,0
+Australia,Player_Aust_2,Midfielder,90849322,fit,0
+Australia,Player_Aust_3,Defender,51168713,fit,0
+Austria,Player_Aust_1,Forward,103534399,fit,0
+Austria,Player_Aust_2,Midfielder,103207224,fit,0
+Austria,Player_Aust_3,Defender,61026696,fit,0
+Belgium,Player_Belg_1,Forward,114600520,fit,0
+Belgium,Player_Belg_2,Midfielder,37835830,fit,0
+Belgium,Player_Belg_3,Defender,104857499,fit,0
+Bosnia & Herzegovina,Player_Bosn_1,Forward,99220159,injured,18
+Bosnia & Herzegovina,Player_Bosn_2,Midfielder,39859876,injured,3
+Bosnia & Herzegovina,Player_Bosn_3,Defender,77027534,injured,20
+Brazil,Player_Braz_1,Forward,103840488,fit,0
+Brazil,Player_Braz_2,Midfielder,44782987,fit,0
+Brazil,Player_Braz_3,Defender,84739634,injured,3
+Canada,Player_Cana_1,Forward,99133497,injured,13
+Canada,Player_Cana_2,Midfielder,50982998,fit,0
+Canada,Player_Cana_3,Defender,58227003,fit,0
+Cape Verde,Player_Cape_1,Forward,44295773,fit,0
+Cape Verde,Player_Cape_2,Midfielder,103631014,fit,0
+Cape Verde,Player_Cape_3,Defender,76905090,fit,0
+Colombia,Player_Colo_1,Forward,84784318,fit,0
+Colombia,Player_Colo_2,Midfielder,56880544,injured,21
+Colombia,Player_Colo_3,Defender,81515324,fit,0
+Croatia,Player_Croa_1,Forward,51294053,injured,2
+Croatia,Player_Croa_2,Midfielder,43865749,fit,0
+Croatia,Player_Croa_3,Defender,50605337,fit,0
+Curaçao,Player_Cura_1,Forward,41476892,injured,29
+Curaçao,Player_Cura_2,Midfielder,80105067,fit,0
+Curaçao,Player_Cura_3,Defender,63441421,injured,21
+Czech Republic,Player_Czec_1,Forward,58938577,fit,0
+Czech Republic,Player_Czec_2,Midfielder,43149086,fit,0
+Czech Republic,Player_Czec_3,Defender,44347975,fit,0
+DR Congo,Player_DR C_1,Forward,89381941,fit,0
+DR Congo,Player_DR C_2,Midfielder,40122687,injured,17
+DR Congo,Player_DR C_3,Defender,60029249,injured,28
+Ecuador,Player_Ecua_1,Forward,31363158,fit,0
+Ecuador,Player_Ecua_2,Midfielder,79679218,fit,0
+Ecuador,Player_Ecua_3,Defender,28097761,fit,0
+Egypt,Player_Egyp_1,Forward,91732375,fit,0
+Egypt,Player_Egyp_2,Midfielder,90004408,injured,1
+Egypt,Player_Egyp_3,Defender,69939555,fit,0
+England,Player_Engl_1,Forward,81857783,injured,25
+England,Player_Engl_2,Midfielder,65472632,fit,0
+England,Player_Engl_3,Defender,51616224,fit,0
+France,Player_Fran_1,Forward,84179561,injured,9
+France,Player_Fran_2,Midfielder,85361481,injured,17
+France,Player_Fran_3,Defender,81485860,injured,10
+Germany,Player_Germ_1,Forward,74730170,fit,0
+Germany,Player_Germ_2,Midfielder,33850746,fit,0
+Germany,Player_Germ_3,Defender,31474518,injured,30
+Ghana,Player_Ghan_1,Forward,53375856,fit,0
+Ghana,Player_Ghan_2,Midfielder,40632844,fit,0
+Ghana,Player_Ghan_3,Defender,78018294,injured,27
+Haiti,Player_Hait_1,Forward,68406488,fit,0
+Haiti,Player_Hait_2,Midfielder,34452295,fit,0
+Haiti,Player_Hait_3,Defender,24725422,injured,27
+Iran,Player_Iran_1,Forward,23428168,injured,25
+Iran,Player_Iran_2,Midfielder,26719261,fit,0
+Iran,Player_Iran_3,Defender,74506593,fit,0
+Iraq,Player_Iraq_1,Forward,48560801,fit,0
+Iraq,Player_Iraq_2,Midfielder,73190067,injured,25
+Iraq,Player_Iraq_3,Defender,59968112,fit,0
+Ivory Coast,Player_Ivor_1,Forward,35219709,injured,21
+Ivory Coast,Player_Ivor_2,Midfielder,38588759,injured,15
+Ivory Coast,Player_Ivor_3,Defender,24806829,fit,0
+Japan,Player_Japa_1,Forward,35450917,fit,0
+Japan,Player_Japa_2,Midfielder,29750057,fit,0
+Japan,Player_Japa_3,Defender,21348434,fit,0
+Jordan,Player_Jord_1,Forward,28676030,injured,28
+Jordan,Player_Jord_2,Midfielder,33851852,fit,0
+Jordan,Player_Jord_3,Defender,31202340,fit,0
+Mexico,Player_Mexi_1,Forward,42930309,injured,29
+Mexico,Player_Mexi_2,Midfielder,44495320,fit,0
+Mexico,Player_Mexi_3,Defender,55003275,injured,7
+Morocco,Player_Moro_1,Forward,20271042,fit,0
+Morocco,Player_Moro_2,Midfielder,32593704,fit,0
+Morocco,Player_Moro_3,Defender,56745861,fit,0
+Netherlands,Player_Neth_1,Forward,44997570,fit,0
+Netherlands,Player_Neth_2,Midfielder,17963937,injured,26
+Netherlands,Player_Neth_3,Defender,54492267,fit,0
+New Zealand,Player_New _1,Forward,22931150,fit,0
+New Zealand,Player_New _2,Midfielder,33078415,fit,0
+New Zealand,Player_New _3,Defender,25541522,injured,15
+Norway,Player_Norw_1,Forward,47936934,injured,4
+Norway,Player_Norw_2,Midfielder,16124709,injured,27
+Norway,Player_Norw_3,Defender,14619829,fit,0
+Panama,Player_Pana_1,Forward,43693333,fit,0
+Panama,Player_Pana_2,Midfielder,29737845,fit,0
+Panama,Player_Pana_3,Defender,48158945,injured,6
+Paraguay,Player_Para_1,Forward,27352567,injured,9
+Paraguay,Player_Para_2,Midfielder,48378294,injured,10
+Paraguay,Player_Para_3,Defender,29043487,injured,26
+Portugal,Player_Port_1,Forward,32541120,injured,5
+Portugal,Player_Port_2,Midfielder,19150261,fit,0
+Portugal,Player_Port_3,Defender,14340488,injured,2
+Qatar,Player_Qata_1,Forward,37629549,fit,0
+Qatar,Player_Qata_2,Midfielder,31929380,fit,0
+Qatar,Player_Qata_3,Defender,41274652,fit,0
+Saudi Arabia,Player_Saud_1,Forward,42705703,fit,0
+Saudi Arabia,Player_Saud_2,Midfielder,17132223,fit,0
+Saudi Arabia,Player_Saud_3,Defender,33282014,fit,0
+Scotland,Player_Scot_1,Forward,14140462,injured,8
+Scotland,Player_Scot_2,Midfielder,28462274,fit,0
+Scotland,Player_Scot_3,Defender,12957882,fit,0
+Senegal,Player_Sene_1,Forward,26417671,fit,0
+Senegal,Player_Sene_2,Midfielder,17466511,fit,0
+Senegal,Player_Sene_3,Defender,19037005,fit,0
+South Africa,Player_Sout_1,Forward,12812240,fit,0
+South Africa,Player_Sout_2,Midfielder,21819398,injured,30
+South Africa,Player_Sout_3,Defender,11202189,fit,0
+South Korea,Player_Sout_1,Forward,34360124,injured,3
+South Korea,Player_Sout_2,Midfielder,22470967,fit,0
+South Korea,Player_Sout_3,Defender,12017379,fit,0
+Spain,Player_Spai_1,Forward,9650991,fit,0
+Spain,Player_Spai_2,Midfielder,14839697,fit,0
+Spain,Player_Spai_3,Defender,21037231,fit,0
+Sweden,Player_Swed_1,Forward,29241543,injured,17
+Sweden,Player_Swed_2,Midfielder,7573672,injured,10
+Sweden,Player_Swed_3,Defender,28084984,fit,0
+Switzerland,Player_Swit_1,Forward,24713790,fit,0
+Switzerland,Player_Swit_2,Midfielder,24950139,injured,5
+Switzerland,Player_Swit_3,Defender,12355903,fit,0
+Tunisia,Player_Tuni_1,Forward,19547586,fit,0
+Tunisia,Player_Tuni_2,Midfielder,17996826,fit,0
+Tunisia,Player_Tuni_3,Defender,15286692,injured,28
+Turkey,Player_Turk_1,Forward,6453421,fit,0
+Turkey,Player_Turk_2,Midfielder,19533047,fit,0
+Turkey,Player_Turk_3,Defender,11203749,fit,0
+USA,Player_USA_1,Forward,19696969,fit,0
+USA,Player_USA_2,Midfielder,11627532,injured,18
+USA,Player_USA_3,Defender,5145045,fit,0
+Uruguay,Player_Urug_1,Forward,16057004,injured,18
+Uruguay,Player_Urug_2,Midfielder,4875571,fit,0
+Uruguay,Player_Urug_3,Defender,11693331,fit,0
+Uzbekistan,Player_Uzbe_1,Forward,4276848,fit,0
+Uzbekistan,Player_Uzbe_2,Midfielder,14437203,injured,2
+Uzbekistan,Player_Uzbe_3,Defender,14047740,fit,0

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
+UTC = timezone.utc
 import json
 from pathlib import Path
 from typing import Any, Callable
@@ -25,7 +26,7 @@ def run_workflow(config_path: str | Path, *, telegram_sender: TelegramSender | N
             injuries=load_injuries(config["data"]["transfermarkt"]),
             window=int(config.get("window", 5)),
         )
-        prediction = predict_match(features)
+        prediction = predict_match(features, odds=_load_json(config["data"]["odds"]).get("markets"))
         decisions = build_betting_decisions(
             prediction,
             _load_json(config["data"]["odds"]),

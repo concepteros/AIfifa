@@ -12,7 +12,7 @@ from predict_odds.errors import PredictValidationError
 class BettingDecisionTest(unittest.TestCase):
     def test_recommends_value_bets_with_fractional_kelly(self):
         prediction = {
-            "model": "poisson_v1",
+            "model": "poisson_v2",
             "probabilities": {
                 "home_win": 0.52,
                 "draw": 0.24,
@@ -85,7 +85,7 @@ class BettingDecisionTest(unittest.TestCase):
 
     def test_decide_cli_prints_recommendations(self):
         prediction = {
-            "model": "poisson_v1",
+            "model": "poisson_v2",
             "probabilities": {
                 "home_win": 0.52,
                 "draw": 0.24,

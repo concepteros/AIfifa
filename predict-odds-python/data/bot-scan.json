@@ -1,0 +1,42 @@
+{
+  "odds_sources": [
+    "predict_fun",
+    "polymarket"
+  ],
+  "scan": {
+    "sport": "soccer_fifa_world_cup",
+    "regions": "eu",
+    "markets": [
+      "h2h",
+      "totals",
+      "spreads"
+    ],
+    "league": "FIFA World Cup",
+    "date": "2026-06-29"
+  },
+  "polymarket": {
+    "query": "World Cup",
+    "limit": 100,
+    "active": true,
+    "closed": false
+  },
+  "data": {
+    "fbref": "data/fbref.csv",
+    "transfermarkt": "data/transfermarkt.csv"
+  },
+  "decision": {
+    "bankroll": 100,
+    "min_edge": 0.03,
+    "fractional_kelly": 0.25,
+    "max_stake_fraction": 0.05
+  },
+  "output": {
+    "directory": "out"
+  },
+  "database": {
+    "path": "out/bot.sqlite"
+  },
+  "telegram": {
+    "enabled": true
+  }
+}

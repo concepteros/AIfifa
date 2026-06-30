@@ -1,0 +1,97 @@
+date,league,team,opponent,venue,goals_for,goals_against,xg,xga,result
+2026-06-11,FIFA World Cup,Argentina,New Zealand,home,1,0,2.06,0.31,W
+2026-06-11,FIFA World Cup,New Zealand,Argentina,away,0,1,0.31,2.06,L
+2026-06-11,FIFA World Cup,Egypt,Jordan,home,1,1,1.14,0.77,D
+2026-06-11,FIFA World Cup,Jordan,Egypt,away,1,1,0.77,1.14,D
+2026-06-11,FIFA World Cup,France,Haiti,home,1,0,1.56,0.57,W
+2026-06-11,FIFA World Cup,Haiti,France,away,0,1,0.57,1.56,L
+2026-06-11,FIFA World Cup,Uruguay,DR Congo,home,3,2,2.03,1.14,W
+2026-06-11,FIFA World Cup,DR Congo,Uruguay,away,2,3,1.14,2.03,L
+2026-06-11,FIFA World Cup,Brazil,Uzbekistan,home,2,1,2.03,0.75,W
+2026-06-11,FIFA World Cup,Uzbekistan,Brazil,away,1,2,0.75,2.03,L
+2026-06-11,FIFA World Cup,Switzerland,Scotland,home,3,1,2.0,0.77,W
+2026-06-11,FIFA World Cup,Scotland,Switzerland,away,1,3,0.77,2.0,L
+2026-06-11,FIFA World Cup,England,Iran,home,3,1,2.67,0.93,W
+2026-06-11,FIFA World Cup,Iran,England,away,1,3,0.93,2.67,L
+2026-06-11,FIFA World Cup,Germany,Ghana,home,3,1,2.8,0.99,W
+2026-06-11,FIFA World Cup,Ghana,Germany,away,1,3,0.99,2.8,L
+2026-06-11,FIFA World Cup,Spain,Panama,home,2,1,2.26,0.81,W
+2026-06-11,FIFA World Cup,Panama,Spain,away,1,2,0.81,2.26,L
+2026-06-11,FIFA World Cup,Croatia,Morocco,home,1,3,1.46,1.85,L
+2026-06-11,FIFA World Cup,Morocco,Croatia,away,3,1,1.85,1.46,W
+2026-06-11,FIFA World Cup,Portugal,Cape Verde,home,4,1,3.14,0.7,W
+2026-06-11,FIFA World Cup,Cape Verde,Portugal,away,1,4,0.7,3.14,L
+2026-06-11,FIFA World Cup,Netherlands,Iraq,home,0,1,1.38,0.79,L
+2026-06-11,FIFA World Cup,Iraq,Netherlands,away,1,0,0.79,1.38,W
+2026-06-12,FIFA World Cup,Belgium,Turkey,home,1,1,1.54,1.22,D
+2026-06-12,FIFA World Cup,Turkey,Belgium,away,1,1,1.22,1.54,D
+2026-06-12,FIFA World Cup,Austria,Saudi Arabia,home,0,1,1.05,0.48,L
+2026-06-12,FIFA World Cup,Saudi Arabia,Austria,away,1,0,0.48,1.05,W
+2026-06-12,FIFA World Cup,Colombia,Curaçao,home,2,1,1.9,0.75,W
+2026-06-12,FIFA World Cup,Curaçao,Colombia,away,1,2,0.75,1.9,L
+2026-06-12,FIFA World Cup,Senegal,Ivory Coast,home,3,0,1.97,0.83,W
+2026-06-12,FIFA World Cup,Ivory Coast,Senegal,away,0,3,0.83,1.97,L
+2026-06-12,FIFA World Cup,Czech Republic,Paraguay,home,1,1,1.27,0.94,D
+2026-06-12,FIFA World Cup,Paraguay,Czech Republic,away,1,1,0.94,1.27,D
+2026-06-12,FIFA World Cup,Norway,South Africa,home,1,1,1.1,0.72,D
+2026-06-12,FIFA World Cup,South Africa,Norway,away,1,1,0.72,1.1,D
+2026-06-12,FIFA World Cup,Mexico,Bosnia & Herzegovina,home,4,1,2.33,0.93,W
+2026-06-12,FIFA World Cup,Bosnia & Herzegovina,Mexico,away,1,4,0.93,2.33,L
+2026-06-12,FIFA World Cup,Sweden,Canada,home,0,2,0.69,1.62,L
+2026-06-12,FIFA World Cup,Canada,Sweden,away,2,0,1.62,0.69,W
+2026-06-12,FIFA World Cup,USA,Ecuador,home,3,0,2.0,0.66,W
+2026-06-12,FIFA World Cup,Ecuador,USA,away,0,3,0.66,2.0,L
+2026-06-12,FIFA World Cup,Japan,Australia,home,1,2,1.43,1.52,L
+2026-06-12,FIFA World Cup,Australia,Japan,away,2,1,1.52,1.43,W
+2026-06-12,FIFA World Cup,Algeria,South Korea,home,2,3,1.28,2.21,L
+2026-06-12,FIFA World Cup,South Korea,Algeria,away,3,2,2.21,1.28,W
+2026-06-12,FIFA World Cup,Qatar,Tunisia,home,2,2,1.36,1.01,D
+2026-06-12,FIFA World Cup,Tunisia,Qatar,away,2,2,1.01,1.36,D
+2026-06-17,FIFA World Cup,Argentina,Egypt,home,1,1,1.64,0.94,D
+2026-06-17,FIFA World Cup,Egypt,Argentina,away,1,1,0.94,1.64,D
+2026-06-17,FIFA World Cup,Jordan,New Zealand,home,0,1,0.55,1.0,L
+2026-06-17,FIFA World Cup,New Zealand,Jordan,away,1,0,1.0,0.55,W
+2026-06-17,FIFA World Cup,France,Uruguay,home,2,0,2.63,1.21,W
+2026-06-17,FIFA World Cup,Uruguay,France,away,0,2,1.21,2.63,L
+2026-06-17,FIFA World Cup,DR Congo,Haiti,home,3,1,1.78,0.77,W
+2026-06-17,FIFA World Cup,Haiti,DR Congo,away,1,3,0.77,1.78,L
+2026-06-17,FIFA World Cup,Brazil,Switzerland,home,1,1,1.34,1.32,D
+2026-06-17,FIFA World Cup,Switzerland,Brazil,away,1,1,1.32,1.34,D
+2026-06-17,FIFA World Cup,Scotland,Uzbekistan,home,1,3,0.87,1.53,L
+2026-06-17,FIFA World Cup,Uzbekistan,Scotland,away,3,1,1.53,0.87,W
+2026-06-17,FIFA World Cup,England,Germany,home,0,1,1.31,2.01,L
+2026-06-17,FIFA World Cup,Germany,England,away,1,0,2.01,1.31,W
+2026-06-17,FIFA World Cup,Ghana,Iran,home,2,2,1.31,1.58,D
+2026-06-17,FIFA World Cup,Iran,Ghana,away,2,2,1.58,1.31,D
+2026-06-17,FIFA World Cup,Spain,Croatia,home,1,2,1.48,1.82,L
+2026-06-17,FIFA World Cup,Croatia,Spain,away,2,1,1.82,1.48,W
+2026-06-17,FIFA World Cup,Morocco,Panama,home,1,1,1.31,0.79,D
+2026-06-17,FIFA World Cup,Panama,Morocco,away,1,1,0.79,1.31,D
+2026-06-17,FIFA World Cup,Portugal,Netherlands,home,2,1,1.79,1.29,W
+2026-06-17,FIFA World Cup,Netherlands,Portugal,away,1,2,1.29,1.79,L
+2026-06-17,FIFA World Cup,Iraq,Cape Verde,home,1,0,0.94,0.62,W
+2026-06-17,FIFA World Cup,Cape Verde,Iraq,away,0,1,0.62,0.94,L
+2026-06-18,FIFA World Cup,Belgium,Austria,home,2,1,2.2,1.45,W
+2026-06-18,FIFA World Cup,Austria,Belgium,away,1,2,1.45,2.2,L
+2026-06-18,FIFA World Cup,Saudi Arabia,Turkey,home,1,1,0.79,1.25,D
+2026-06-18,FIFA World Cup,Turkey,Saudi Arabia,away,1,1,1.25,0.79,D
+2026-06-18,FIFA World Cup,Colombia,Senegal,home,1,1,1.29,1.2,D
+2026-06-18,FIFA World Cup,Senegal,Colombia,away,1,1,1.2,1.29,D
+2026-06-18,FIFA World Cup,Ivory Coast,Curaçao,home,1,2,1.24,1.27,L
+2026-06-18,FIFA World Cup,Curaçao,Ivory Coast,away,2,1,1.27,1.24,W
+2026-06-18,FIFA World Cup,Czech Republic,Norway,home,1,2,0.97,1.48,L
+2026-06-18,FIFA World Cup,Norway,Czech Republic,away,2,1,1.48,0.97,W
+2026-06-18,FIFA World Cup,South Africa,Paraguay,home,0,1,0.17,0.95,L
+2026-06-18,FIFA World Cup,Paraguay,South Africa,away,1,0,0.95,0.17,W
+2026-06-18,FIFA World Cup,Mexico,Sweden,home,1,1,1.35,0.97,D
+2026-06-18,FIFA World Cup,Sweden,Mexico,away,1,1,0.97,1.35,D
+2026-06-18,FIFA World Cup,Canada,Bosnia & Herzegovina,home,3,1,1.94,1.0,W
+2026-06-18,FIFA World Cup,Bosnia & Herzegovina,Canada,away,1,3,1.0,1.94,L
+2026-06-18,FIFA World Cup,USA,Japan,home,2,1,1.69,1.46,W
+2026-06-18,FIFA World Cup,Japan,USA,away,1,2,1.46,1.69,L
+2026-06-18,FIFA World Cup,Australia,Ecuador,home,2,3,1.32,2.03,L
+2026-06-18,FIFA World Cup,Ecuador,Australia,away,3,2,2.03,1.32,W
+2026-06-18,FIFA World Cup,Algeria,Qatar,home,0,2,0.78,1.14,L
+2026-06-18,FIFA World Cup,Qatar,Algeria,away,2,0,1.14,0.78,W
+2026-06-18,FIFA World Cup,Tunisia,South Korea,home,2,3,1.37,2.05,L
+2026-06-18,FIFA World Cup,South Korea,Tunisia,away,3,2,2.05,1.37,W

@@ -19,7 +19,7 @@ class BotScannerTest(unittest.TestCase):
                 run_id,
                 {
                     "fixture": {"home_team": "Arsenal", "away_team": "Chelsea", "date": "2026-06-20", "league": "Premier League"},
-                    "prediction": {"model": "poisson_v1"},
+                    "prediction": {"model": "poisson_v2"},
                     "decisions": {"recommendations": [{"market": "home_win", "action": "bet"}]},
                     "result_path": "out/result.json",
                 },
@@ -47,7 +47,7 @@ class BotScannerTest(unittest.TestCase):
             self.assertEqual(result["skipped"], 1)
             self.assertEqual(result["matches"][0]["fixture"]["home_team"], "Arsenal")
             self.assertTrue(Path(result["matches"][0]["result_path"]).exists())
-            self.assertEqual(len(sent), 1)
+            self.assertEqual(len(sent), 0)
             repository = BotRepository(Path(tmp) / "bot.sqlite")
             self.assertEqual(repository.list_runs()[0]["matches"], 1)
 

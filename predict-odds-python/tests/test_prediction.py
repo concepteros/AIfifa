@@ -33,7 +33,7 @@ class PoissonPredictionTest(unittest.TestCase):
 
         prediction = predict_match(feature_payload)
 
-        self.assertEqual(prediction["model"], "poisson_v1")
+        self.assertEqual(prediction["model"], "poisson_v2")
         self.assertEqual(prediction["match"]["home_team"], "Arsenal")
         self.assertGreater(prediction["expected_goals"]["home"], prediction["expected_goals"]["away"])
         outcome_total = (
@@ -100,7 +100,7 @@ class PoissonPredictionTest(unittest.TestCase):
         self.assertEqual(code, 0)
         output = "".join(call.args[0] for call in stdout.write.call_args_list if call.args)
         payload = json.loads(output)
-        self.assertEqual(payload["model"], "poisson_v1")
+        self.assertEqual(payload["model"], "poisson_v2")
         self.assertEqual(payload["match"]["away_team"], "Chelsea")
 
 

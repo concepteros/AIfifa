@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 class PredictAPIError(Exception):
     """Base exception for Predict API client errors."""
 

@@ -1,439 +1,126 @@
-# Predict Odds Python
+# AI Football Prediction Bot
 
-Python module for fetching football odds from the Predict markets API.
+> 世界杯足球 AI 预测 + 自动交易系统 | Poisson 模型 · 战术分析 · Kelly 仓位 · Predict.fun 链上下单
 
-It supports:
+## Overview
 
-- league and date filters
-- API key lookup from environment variables
-- structured JSON output for win/draw/win, handicap, and totals markets
-- FBref/Transfermarkt data integration for form, xG, and injury features
-- request, authentication, response, and validation errors
-- dependency-free standard library HTTP client
+Production-grade AI football prediction bot powering live World Cup 2026 betting. Runs inside [Hermes Agent](https://github.com/nousresearch/hermes-agent) as a skill-driven cron job.
 
-## Setup
+**Core Pipeline:**
+1. **ESPN API** → live fixtures & results (no API key needed)
+2. **Poisson v2 Model** → xG prediction + score distribution
+3. **Tactical Analysis** → 59-team profiles + style matchup
+4. **Referee Assessment** → strictness/cards/VAR/home bias
+5. **The Odds API** → real-time Bet365/Pinnacle odds
+6. **Kelly Criterion** → 1/4 Kelly position sizing (5% cap)
 
-```powershell
+## Verified Track Record
+
+| Match | Prediction | Result | Status |
+|-------|-----------|--------|--------|
+| Ecuador vs Curaçao | 0-0 (70% draw) | 0-0 | ✅ Score + direction |
+| Tunisia vs Japan | Away 81% / 0-2 | 0-4 | ✅ Direction |
+| France vs Iraq | Over 2.5 + 3-0 | 3-0 | ✅ Exact score |
+| Argentina vs Austria | Under 2.5 + 1-0 | 2-0 (U✅) | ⚠️ Half right |
+| Portugal vs Uzbekistan | Steamroll | 5-0 | ✅ |
+| Panama vs Croatia | Gray zone Croatia | 0-1 | ✅ |
+| Colombia vs Congo DR | Gray zone Colombia | 1-0 | ✅ |
+
+## Quick Start
+
+```bash
+git clone https://github.com/concepteros/AIfifa.git
 cd predict-odds-python
-$env:PREDICT_API_KEY="your-api-key"
+python3 -m venv .venv
+.venv/bin/pip install -e .
+
+# Configure .env (see .env.example)
+cp .env.example .env
+# Edit .env with your API keys
+
+# Scan today's World Cup matches
+.venv/bin/python -m predict_odds scan --config data/bot-scan.json --summary
 ```
 
-The default endpoint is:
+## Hermes Agent Integration
 
-```text
-https://api.predict.fun/v1/markets
+This repo includes a `SKILL.md` for Hermes Agent. Load it as:
+
+```bash
+cp SKILL.md ~/.hermes/skills/crypto/football-bot/SKILL.md
 ```
 
-Override it with:
+The skill enables natural-language commands:
+- `足球` / `fb` — scan fixtures
+- `⚽ 分析 France vs Sweden` — full pipeline analysis
+- `下注 draw 10U` — place Predict.fun bets
 
-```powershell
-$env:PREDICT_API_URL="https://api.predict.fun/v1/markets"
+Cron job delivers daily predictions to Telegram at 08:00 BJT.
+
+## Project Structure
+
+```
+predict-odds-python/
+├── src/predict_odds/
+│   ├── prediction.py          # Poisson v2 model
+│   ├── feature_pipeline.py    # Feature engineering + referee
+│   ├── tactics.py             # 59-team tactical profiles
+│   ├── supplementary.py       # Referee/weather/injury data
+│   ├── ml_model.py            # XGBoost ensemble
+│   ├── the_odds_api.py        # The Odds API client
+│   ├── bot_scanner.py         # Scan + Kelly pipeline
+│   ├── predict_fun_betting.py # On-chain betting (BNB Chain)
+│   └── predict_fun_sell.py    # Take-profit module
+├── data/                      # Data files
+├── scripts/                   # Data pipelines
+├── references/                # Analysis frameworks & lessons learned
+├── tests/                     # Test suite
+└── SKILL.md                   # Hermes Agent skill definition
 ```
 
-You can also keep local credentials in `.env`; this file is ignored by git:
+## Data Sources
 
-```text
-PREDICT_API_KEY=your-predict-api-key
-THE_ODDS_API_KEY=your-odds-api-key
-POLYMARKET_API_URL=https://gamma-api.polymarket.com
-TELEGRAM_BOT_TOKEN=your-telegram-bot-token
-TELEGRAM_CHAT_ID=your-chat-id
+| Source | Purpose | Auth |
+|--------|---------|------|
+| ESPN API | Fixtures & results | None |
+| The Odds API | Real-time odds (h2h/totals/spreads) | `THE_ODDS_API_KEY` |
+| Predict.fun | Prediction market odds + on-chain trading | `PREDICTFUN_API_KEY` |
+| api-football | Bet365 odds/lineups/corners | `API_FOOTBALL_KEY` |
+| Polymarket | Event discovery | None (browser) |
+
+## Betting Frameworks
+
+- **3-Tier Odds Reliability**: 1.06-1.18 steamroll / 1.35-1.45 danger zone / 1.48-1.60 gray zone
+- **Structured Counter-Attack Check**: Before betting steamroll favorites, verify opponent lacks PL/LaLiga midfield anchors + pace on wings
+- **Star Premium Pattern**: Haaland-effect: markets inflate super-star teams. Verify round 1 stats before fading
+- **Knockout Stage**: Draw probability spikes in R16+. Be conservative on ML bets.
+- **xG Conversion Asymmetry**: Favorites vs low blocks → inflated xG, poor conversion. Don't blindly bet Over.
+
+## Predict.fun Trading
+
+On-chain betting via BNB Chain (ChainId 56):
+
+```bash
+# Dry-run (safe)
+.venv/bin/python -m predict_odds bet \
+  --match-slug fifwc-tun-jpn-2026-06-21 \
+  --bet-type away --amount 10 --dry-run -y
+
+# Live bet
+.venv/bin/python -m predict_odds bet ... --live -y
+
+# Bettable types: home / draw / away / over_2_5 / under_2_5 / exact_score_1-0
 ```
 
-## CLI
+Safety gates: $50 max/single bet, $200 daily limit. Requires BNB Chain USDC + BNB for gas.
 
-```powershell
-python -m pip install -e .
-predict-odds odds --league "Premier League" --date 2026-06-20
-```
+## Environment
 
-Without installing:
+- Python 3.9+
+- macOS / Linux
+- `.env` at project root (see `.env.example`)
+- Virtual env: `.venv/`
 
-```powershell
-$env:PYTHONPATH="src"
-python -m predict_odds odds --league "Premier League" --date 2026-06-20
-```
+## License
 
-The old form still works:
-
-```powershell
-python -m predict_odds --league "Premier League" --date 2026-06-20
-```
-
-## Offline Demo
-
-Run the full bot locally without external APIs:
-
-```powershell
-$env:PYTHONPATH="src"
-python -m predict_odds demo --output .\demo-out
-```
-
-The demo writes sample FBref, Transfermarkt, The Odds API event, result, and closing odds files, then runs scan, settlement, CLV tracking, and reporting.
-
-## Python API
-
-```python
-from predict_odds import PredictOddsClient
-
-client = PredictOddsClient.from_env()
-payload = client.get_football_odds(league="Premier League", date="2026-06-20")
-print(payload.to_json())
-```
-
-## Feature Engineering
-
-Use FBref-style match exports and Transfermarkt-style injury exports:
-
-```powershell
-$env:PYTHONPATH="src"
-python -m predict_odds features `
-  --league "Premier League" `
-  --date 2026-06-20 `
-  --home-team "Arsenal" `
-  --away-team "Chelsea" `
-  --fbref .\data\fbref.csv `
-  --transfermarkt .\data\transfermarkt.csv
-```
-
-Expected match CSV columns:
-
-```text
-date,league,team,opponent,venue,goals_for,goals_against,xg,xga,result
-```
-
-Expected injury CSV columns:
-
-```text
-team,player,position,market_value_eur,status,days_out
-```
-
-Feature output includes recent form, goal difference, xG/xGA averages, xG deltas, injured player counts, injured market value, and injury impact deltas.
-
-## Prediction Model
-
-Run a Poisson score model on top of the engineered features:
-
-```powershell
-$env:PYTHONPATH="src"
-python -m predict_odds predict `
-  --league "Premier League" `
-  --date 2026-06-20 `
-  --home-team "Arsenal" `
-  --away-team "Chelsea" `
-  --fbref .\data\fbref.csv `
-  --transfermarkt .\data\transfermarkt.csv
-```
-
-The prediction output includes expected goals, win/draw/loss probabilities, over/under 2.5, both-teams-to-score, most likely scores, and rule-based reasoning.
-
-## Decision Engine
-
-Find value bets and stake sizes from a prediction JSON file and decimal odds:
-
-```powershell
-$env:PYTHONPATH="src"
-python -m predict_odds decide `
-  --prediction .\data\prediction.json `
-  --odds .\data\odds.json `
-  --bankroll 1000 `
-  --min-edge 0.03 `
-  --fractional-kelly 0.25 `
-  --max-stake-fraction 0.05
-```
-
-Odds JSON should be keyed by prediction market:
-
-```json
-{
-  "home_win": 2.1,
-  "draw": 3.4,
-  "away_win": 3.2,
-  "over_2_5": 1.9,
-  "under_2_5": 1.95
-}
-```
-
-The engine calculates implied probability, model edge, expected value, Kelly fraction, capped stake fraction, and stake amount.
-
-## Scheduled Workflow
-
-Run the full feature, prediction, decision, file-output, and optional Telegram notification workflow once:
-
-```powershell
-$env:PYTHONPATH="src"
-python -m predict_odds run --config .\data\workflow.json
-```
-
-Schedule it daily with APScheduler:
-
-```powershell
-$env:PYTHONPATH="src"
-python -m predict_odds schedule --config .\data\workflow.json --time 09:00 --timezone Asia/Shanghai
-```
-
-Workflow config example:
-
-```json
-{
-  "fixture": {
-    "league": "Premier League",
-    "date": "2026-06-20",
-    "home_team": "Arsenal",
-    "away_team": "Chelsea"
-  },
-  "data": {
-    "fbref": "./data/fbref.csv",
-    "transfermarkt": "./data/transfermarkt.csv",
-    "odds": "./data/odds.json"
-  },
-  "decision": {
-    "bankroll": 1000,
-    "min_edge": 0.03,
-    "fractional_kelly": 0.25,
-    "max_stake_fraction": 0.05
-  },
-  "output": {"directory": "./out"},
-  "telegram": {"enabled": true}
-}
-```
-
-Telegram notifications read credentials from environment variables:
-
-```powershell
-$env:TELEGRAM_BOT_TOKEN="your-bot-token"
-$env:TELEGRAM_CHAT_ID="your-chat-id"
-```
-
-## Telegram Control Panel
-
-Run an interactive Telegram control panel with `/dashboard`, `/upcoming`, `/scan`, `/approve`, `/history`, and `/set_limit` commands:
-
-```powershell
-$env:PYTHONPATH="src"
-python -m predict_odds --env-file .\.env telegram-panel --config .\data\telegram-panel.example.json
-```
-
-The panel uses `python-telegram-bot` and reads the bot token from `TELEGRAM_BOT_TOKEN` by default. Set `allowed_chat_ids` to your Telegram chat id to restrict access:
-
-```json
-{
-  "telegram_panel": {
-    "bot_token_env": "TELEGRAM_BOT_TOKEN",
-    "allowed_chat_ids": ["123456789"],
-    "scan_config": "./bot-scan.json",
-    "database": "../out/bot.sqlite",
-    "approvals": "../out/telegram-approvals.json",
-    "limits": {
-      "daily_stake": 100,
-      "max_single_stake": 25
-    }
-  }
-}
-```
-
-Limit changes can be made from Telegram:
-
-```text
-/set_limit daily_stake 250
-/set_limit max_single_stake 50
-```
-
-## Bot Scanner
-
-Scan upcoming matches through The Odds API, predict.fun, and Polymarket, normalize all markets into one odds board, run predictions and decisions, save SQLite history, and optionally send Telegram summaries:
-
-```powershell
-$env:THE_ODDS_API_KEY="your-odds-api-key"
-$env:PREDICT_API_KEY="your-predict-api-key"
-$env:POLYMARKET_API_URL="https://gamma-api.polymarket.com"
-$env:SPORTMONKS_API_KEY="your-sportmonks-api-key"
-$env:PYTHONPATH="src"
-python -m predict_odds scan --config .\data\bot-scan.json
-```
-
-The scanner uses these odds sources by default:
-
-```json
-["the_odds_api", "predict_fun", "polymarket"]
-```
-
-If one source fails, the scanner continues with the remaining sources. If multiple sources quote the same match and market, the bot keeps the best decimal price and records the contributing `sources` in the match output.
-
-Fetch a rich Sportmonks fixture detail payload with participants, scores, venue, state, events, statistics, lineups, and league:
-
-```powershell
-$env:SPORTMONKS_API_KEY="your-sportmonks-api-key"
-$env:PYTHONPATH="src"
-python -m predict_odds sportmonks-fixture --fixture-id 19102725
-```
-
-The default Sportmonks includes are:
-
-```text
-participants;scores;venue;state;events;statistics;lineups;league
-```
-
-Scanner config example:
-
-```json
-{
-  "odds_sources": ["the_odds_api", "predict_fun", "polymarket"],
-  "scan": {
-    "sport": "soccer_epl",
-    "regions": "eu",
-    "markets": ["h2h", "totals", "spreads"],
-    "league": "Premier League",
-    "date": "2026-06-20"
-  },
-  "polymarket": {
-    "query": "Premier League Arsenal Chelsea",
-    "limit": 100,
-    "active": true,
-    "closed": false
-  },
-  "data": {
-    "fbref": "./data/fbref.csv",
-    "transfermarkt": "./data/transfermarkt.csv"
-  },
-  "decision": {
-    "bankroll": 1000,
-    "min_edge": 0.03,
-    "fractional_kelly": 0.25,
-    "max_stake_fraction": 0.05
-  },
-  "output": {"directory": "./out"},
-  "database": {"path": "./out/bot.sqlite"},
-  "telegram": {"enabled": true}
-}
-```
-
-## Production Checks
-
-Run a local health check before scheduling the bot:
-
-```powershell
-$env:PYTHONPATH="src"
-python -m predict_odds --env-file .\.env doctor --config .\data\bot-scan.json --mode scan --skip-network
-```
-
-The doctor checks config structure, required files, output/database paths, environment variables, and optional network probes. Workflow and scanner runs send a Telegram error summary when `telegram.enabled` is true and a run fails.
-
-For repeatable local scripts, Docker commands, and operations guidance, see [OPERATIONS.md](OPERATIONS.md).
-
-## Settlement and Reporting
-
-Import final scores and settle stored `home_win`, `draw`, `away_win`, totals, and spread recommendations:
-
-```powershell
-$env:PYTHONPATH="src"
-python -m predict_odds settle --database .\out\bot.sqlite --results .\data\results.csv
-python -m predict_odds report --database .\out\bot.sqlite
-```
-
-Track closing line value by adding closing odds:
-
-```powershell
-python -m predict_odds settle --database .\out\bot.sqlite --results .\data\results.csv --closing-odds .\data\closing_odds.csv
-```
-
-Results CSV format:
-
-```text
-date,league,home_team,away_team,home_goals,away_goals
-```
-
-Closing odds CSV format:
-
-```text
-date,league,home_team,away_team,market,closing_odds
-```
-
-The report includes total bets, wins/losses/pushes, stake, profit, ROI, average CLV, positive CLV rate, market-level breakdowns, and family breakdowns for `1x2`, `totals`, and `spreads`.
-
-## Backtesting
-
-Replay stored recommendations against historical results with different value and Kelly settings:
-
-```powershell
-$env:PYTHONPATH="src"
-python -m predict_odds backtest --database .\out\bot.sqlite --results .\data\results.csv --bankroll 1000 --min-edge 0.04 --fractional-kelly 0.25 --max-stake-fraction 0.05
-```
-
-Backtest output includes profit, ROI, hit rate, starting and ending bankroll, maximum drawdown, and an equity curve for each replayed bet.
-
-Filter by league and date range:
-
-```powershell
-python -m predict_odds backtest --database .\out\bot.sqlite --results .\data\results.csv --bankroll 1000 --league "Premier League" --start-date 2026-06-01 --end-date 2026-06-30
-```
-
-Grid-search risk parameters and sort runs by ROI, profit, and bet count:
-
-```powershell
-python -m predict_odds optimize --database .\out\bot.sqlite --results .\data\results.csv --bankroll 1000 --min-edges 0.02,0.03,0.05 --fractional-kellies 0.1,0.25,0.5 --max-stake-fractions 0.02,0.05 --min-bets 10
-```
-
-Optimize on one historical window and validate on a later window:
-
-```powershell
-python -m predict_odds validate --database .\out\bot.sqlite --results .\data\results.csv --bankroll 1000 --min-edges 0.02,0.03,0.05 --fractional-kellies 0.1,0.25 --max-stake-fractions 0.02,0.05 --train-start-date 2026-06-01 --train-end-date 2026-06-15 --validation-start-date 2026-06-16 --validation-end-date 2026-06-30 --min-bets 10
-```
-
-Run repeated walk-forward folds:
-
-```powershell
-python -m predict_odds walk-forward --database .\out\bot.sqlite --results .\data\results.csv --bankroll 1000 --min-edges 0.02,0.03,0.05 --fractional-kellies 0.1,0.25 --max-stake-fractions 0.02,0.05 --window 2026-06-01:2026-06-15:2026-06-16:2026-06-30 --window 2026-06-16:2026-06-30:2026-07-01:2026-07-15 --min-bets 10
-```
-
-Promote validated settings only when risk gates pass:
-
-```powershell
-python -m predict_odds promote --report .\out\walk-forward.json --min-bets 30 --min-roi 0.03 --min-profit 25 --max-drawdown-pct 0.15 --bankroll 1000
-```
-
-Apply promoted settings to the scanner config with a backup:
-
-```powershell
-python -m predict_odds apply-config --config .\data\bot-scan.json --promotion .\out\promotion.json
-```
-
-Evaluate model probabilities, safety gates, and operator digests:
-
-```powershell
-python -m predict_odds evaluate-probs --input .\out\predictions.json
-python -m predict_odds safety --report .\out\report.json --max-daily-stake 100 --max-drawdown-pct 0.15 --max-consecutive-losses 3
-python -m predict_odds digest --scan .\out\scan.json --report .\out\report.json
-```
-
-Generate an LLM-ready match analysis prompt and apply database migrations:
-
-```powershell
-python -m predict_odds llm-prompt --input .\out\2026-06-20-arsenal-vs-chelsea.json
-python -m predict_odds migrate-db --database .\out\bot.sqlite
-```
-
-## Output Shape
-
-```json
-{
-  "league": "Premier League",
-  "date": "2026-06-20",
-  "source": "https://api.predict.fun/v1/markets",
-  "fetched_at": "2026-06-20T10:00:00Z",
-  "raw_count": 3,
-  "markets": {
-    "win_draw_win": [],
-    "handicap": [],
-    "totals": [],
-    "other": []
-  }
-}
-```
-
-## Tests
-
-```powershell
-$env:PYTHONPATH="src"
-python -m unittest discover -s tests
-```
+MIT

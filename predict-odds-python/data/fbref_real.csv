@@ -1,0 +1,21 @@
+date,league,team,opponent,venue,goals_for,goals_against,xg,xga,result
+2026-06-10,Friendly,Spain,—,neutral,,,2.38,1.2,
+2026-06-10,Friendly,Saudi Arabia,—,neutral,,,1.95,1.2,
+2026-06-10,Friendly,Belgium,—,neutral,,,2.24,1.2,
+2026-06-10,Friendly,Iran,—,neutral,,,2.12,1.2,
+2026-06-10,Friendly,Uruguay,—,neutral,,,2.17,1.2,
+2026-06-10,Friendly,Cape Verde,—,neutral,,,1.9,1.2,
+2026-06-10,Friendly,New Zealand,—,neutral,,,1.78,1.2,
+2026-06-10,Friendly,Egypt,—,neutral,,,2.06,1.2,
+2026-06-20,FIFA World Cup,Brazil,Haiti,home,3,0,2.96,0.4,W
+2026-06-20,FIFA World Cup,Haiti,Brazil,away,0,3,0.4,2.96,L
+2026-06-20,FIFA World Cup,Türkiye,Paraguay,home,0,1,0.4,1.02,L
+2026-06-20,FIFA World Cup,Paraguay,Türkiye,away,1,0,1.02,0.4,W
+2026-06-20,FIFA World Cup,Netherlands,Sweden,home,5,1,3.88,1.0,W
+2026-06-20,FIFA World Cup,Sweden,Netherlands,away,1,5,1.0,3.88,L
+2026-06-20,FIFA World Cup,Germany,Ivory Coast,home,2,1,1.96,1.0,W
+2026-06-20,FIFA World Cup,Ivory Coast,Germany,away,1,2,1.0,1.96,L
+2026-06-21,FIFA World Cup,Ecuador,Curaçao,home,0,0,0.45,0.4,D
+2026-06-21,FIFA World Cup,Curaçao,Ecuador,away,0,0,0.4,0.45,D
+2026-06-21,FIFA World Cup,Tunisia,Japan,home,0,4,0.4,3.42,L
+2026-06-21,FIFA World Cup,Japan,Tunisia,away,4,0,3.42,0.4,W

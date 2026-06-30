@@ -132,7 +132,7 @@ def _match_payload(league: str, date: str, home: str, away: str, home_probabilit
             "home_team": home,
             "away_team": away,
         },
-        "prediction": {"model": "poisson_v1"},
+        "prediction": {"model": "poisson_v2"},
         "decisions": {
             "recommendations": [
                 {

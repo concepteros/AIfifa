@@ -79,9 +79,9 @@ class TelegramPanelServiceTest(unittest.TestCase):
             service = TelegramPanelService(config)
             message = service.dashboard()
 
-        self.assertIn("AI Football Betting Bot", message)
-        self.assertIn("Last run: ok, matches 1", message)
-        self.assertIn("Daily stake limit: 100.0", message)
+        self.assertIn("AI 足球投注机器人", message)
+        self.assertIn("最近扫描: #1 成功 1场", message)
+        self.assertIn("日限额: 100.0", message)
 
     def test_upcoming_uses_market_sources(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -89,9 +89,9 @@ class TelegramPanelServiceTest(unittest.TestCase):
             with patch("predict_odds.telegram_panel.fetch_market_events", return_value=[_normalized_event()]):
                 message = TelegramPanelService(config).upcoming()
 
-        self.assertIn("Upcoming Matches", message)
-        self.assertIn("Arsenal vs Chelsea", message)
-        self.assertIn("home_win 2.2", message)
+        self.assertIn("赛程", message)
+        self.assertIn("Arsenal", message)
+        self.assertIn("Chelsea", message)
 
     def test_scan_runs_pipeline_and_returns_summary(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -102,9 +102,9 @@ class TelegramPanelServiceTest(unittest.TestCase):
             ):
                 message = TelegramPanelService(config).scan()
 
-        self.assertIn("Scan complete", message)
-        self.assertIn("Processed: 1", message)
-        self.assertIn("Top value: home_win", message)
+        self.assertIn("赛程", message)
+        self.assertIn("Arsenal", message)
+        self.assertIn("Chelsea", message)
 
     def test_history_reads_recent_runs(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -115,8 +115,8 @@ class TelegramPanelServiceTest(unittest.TestCase):
 
             message = TelegramPanelService(config).history()
 
-        self.assertIn("Recent Runs", message)
-        self.assertIn("#1 ok matches 0", message)
+        self.assertIn("历史记录", message)
+        self.assertIn("#1  成功  场次 0", message)
 
     def test_set_limit_updates_config_file(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -126,7 +126,7 @@ class TelegramPanelServiceTest(unittest.TestCase):
             message = service.set_limit("daily_stake", "250")
             updated = load_panel_config(config.config_path)
 
-        self.assertIn("daily_stake set to 250.0", message)
+        self.assertIn("日限额 已设为 250.0", message)
         self.assertEqual(updated.limits["daily_stake"], 250.0)
 
     def test_approve_signal_writes_decision_log(self):
@@ -137,14 +137,14 @@ class TelegramPanelServiceTest(unittest.TestCase):
             message = service.approve_signal("match-1", approved=True)
             payload = json.loads(config.approvals_path.read_text(encoding="utf-8"))
 
-        self.assertIn("approved", message)
+        self.assertIn("已批准", message)
         self.assertEqual(payload["decisions"][0]["signal_id"], "match-1")
         self.assertTrue(payload["decisions"][0]["approved"])
 
     def test_dashboard_keyboard_uses_inline_buttons(self):
         keyboard = build_dashboard_keyboard()
 
-        self.assertEqual(keyboard[0][0]["text"], "Scan Now")
+        self.assertEqual(keyboard[0][0]["text"], "🔍 扫描下注")
         self.assertEqual(keyboard[0][0]["callback_data"], "dashboard:scan")
 
     def test_cli_starts_telegram_panel(self):
@@ -193,8 +193,16 @@ def _normalized_event():
 
 def _match_result():
     return {
+        "id": 1,
+        "home_team": "Arsenal",
+        "away_team": "Chelsea",
         "fixture": {"league": "Premier League", "date": "2026-06-20", "home_team": "Arsenal", "away_team": "Chelsea"},
-        "prediction": {"model": "poisson_v1"},
+        "prediction": {
+            "model": "poisson_v2",
+            "expected_goals": {"home": 1.5, "away": 0.8},
+            "probabilities": {"home_win": 0.5, "draw": 0.3, "away_win": 0.2, "over_2_5": 0.4, "under_2_5": 0.6},
+            "most_likely_scores": [{"score": "1-0", "probability": 0.15}, {"score": "2-0", "probability": 0.12}],
+        },
         "decisions": {
             "recommendations": [
                 {"market": "home_win", "action": "bet", "expected_value": 0.12, "stake": 20.0},

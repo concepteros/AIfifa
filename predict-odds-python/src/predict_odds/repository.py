@@ -72,7 +72,7 @@ class BotRepository:
         try:
             rows = conn.execute(
                 """
-                SELECT id, home_team, away_team, match_date, league, decision_json
+                SELECT id, run_id, home_team, away_team, match_date, league, prediction_json, decision_json
                 FROM matches
                 ORDER BY id ASC
                 """
@@ -80,6 +80,7 @@ class BotRepository:
             matches = []
             for row in rows:
                 item = dict(row)
+                item["prediction"] = json.loads(item.pop("prediction_json"))
                 item["decision"] = json.loads(item.pop("decision_json"))
                 matches.append(item)
             return matches

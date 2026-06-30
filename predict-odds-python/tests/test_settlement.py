@@ -167,7 +167,7 @@ def _match_result_payload():
             "home_team": "Arsenal",
             "away_team": "Chelsea",
         },
-        "prediction": {"model": "poisson_v1"},
+        "prediction": {"model": "poisson_v2"},
         "decisions": {
             "recommendations": [
                 {"market": "home_win", "action": "bet", "stake": 20.0, "odds": 2.1},

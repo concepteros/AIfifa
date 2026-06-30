@@ -45,17 +45,49 @@ class SportmonksClient:
 
     def get_fixture(self, fixture_id: int | str, *, includes: str = DEFAULT_SPORTMONKS_INCLUDES) -> dict[str, Any]:
         fixture_id = int(fixture_id)
-        status_code, body = self._request_fixture(fixture_id, includes=includes, auth_mode="query")
+        status_code, body = self._request(f"/fixtures/{fixture_id}", includes=includes)
+        return self._parse_fixture_response(body, includes=includes)
+
+    def get_fixtures_by_date(self, date: str, *, includes: str = DEFAULT_SPORTMONKS_INCLUDES) -> list[dict[str, Any]]:
+        """Get all fixtures for a given date (YYYY-MM-DD)."""
+        status_code, body = self._request(f"/fixtures/date/{date}", includes=includes)
+        return self._parse_fixtures_list(body, includes=includes)
+
+    def get_fixtures_between(self, date_from: str, date_to: str, *, includes: str = DEFAULT_SPORTMONKS_INCLUDES) -> list[dict[str, Any]]:
+        """Get all fixtures in a date range (YYYY-MM-DD)."""
+        status_code, body = self._request(f"/fixtures/between/{date_from}/{date_to}", includes=includes)
+        return self._parse_fixtures_list(body, includes=includes)
+
+    def _request(self, path: str, *, includes: str) -> tuple[int, str]:
+        query: dict[str, str] = {}
+        headers = {"Accept": "application/json", "User-Agent": DEFAULT_USER_AGENT}
+        # Try query param auth first
+        query["api_token"] = self.api_key
+        if includes:
+            query["includes"] = includes
+        url = f"{self.base_url}/v3/football{path}"
+        if query:
+            url = f"{url}?{urlencode(query)}"
+        status_code, body = self._transport(url, headers, self.timeout)
         if _is_cloudflare_denial(status_code, body):
             raise PredictHTTPError(status_code, "Sportmonks request was blocked by Cloudflare.", body)
         if status_code in {401, 403}:
-            status_code, body = self._request_fixture(fixture_id, includes=includes, auth_mode="bearer")
+            # Retry with bearer auth
+            query.pop("api_token", None)
+            headers["Authorization"] = f"Bearer {self.api_key}"
+            url = f"{self.base_url}/v3/football{path}"
+            if query:
+                url = f"{url}?{urlencode(query)}"
+            status_code, body = self._transport(url, headers, self.timeout)
         if _is_cloudflare_denial(status_code, body):
             raise PredictHTTPError(status_code, "Sportmonks request was blocked by Cloudflare.", body)
         if status_code in {401, 403}:
             raise PredictAuthenticationError("Sportmonks authentication failed.")
         if status_code < 200 or status_code >= 300:
             raise PredictHTTPError(status_code, f"Sportmonks returned HTTP {status_code}.", body)
+        return status_code, body
+
+    def _parse_fixture_response(self, body: str, *, includes: str) -> dict[str, Any]:
         payload = _parse_json(body)
         data = payload.get("data") if isinstance(payload, dict) else None
         if not isinstance(data, dict):
@@ -65,21 +97,15 @@ class SportmonksClient:
             raise PredictResponseError("Sportmonks fixture response must contain a data object.")
         return _normalize_fixture(data, includes=includes)
 
-    def _request_fixture(self, fixture_id: int, *, includes: str, auth_mode: str) -> tuple[int, str]:
-        query: dict[str, str] = {}
-        headers = {"Accept": "application/json", "User-Agent": DEFAULT_USER_AGENT}
-        if auth_mode == "query":
-            query["api_token"] = self.api_key
-        elif auth_mode == "bearer":
-            headers["Authorization"] = f"Bearer {self.api_key}"
-        else:
-            raise ValueError(f"Unsupported Sportmonks auth mode: {auth_mode}")
-        if includes:
-            query["includes"] = includes
-        url = f"{self.base_url}/v3/football/fixtures/{fixture_id}"
-        if query:
-            url = f"{url}?{urlencode(query)}"
-        return self._transport(url, headers, self.timeout)
+    def _parse_fixtures_list(self, body: str, *, includes: str) -> list[dict[str, Any]]:
+        payload = _parse_json(body)
+        data = payload.get("data") if isinstance(payload, dict) else None
+        if not isinstance(data, list):
+            message = payload.get("message") if isinstance(payload, dict) else None
+            if isinstance(message, str) and message.strip():
+                raise PredictResponseError(f"Sportmonks date response did not include data: {message.strip()}")
+            raise PredictResponseError("Sportmonks date response must contain a data array.")
+        return [_normalize_fixture(item, includes=includes) for item in data if isinstance(item, dict)]
 
 
 def _urlopen_transport(url: str, headers: Mapping[str, str], timeout: float) -> tuple[int, str]:

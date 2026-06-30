@@ -47,8 +47,12 @@ def _fetch_source(source: str, config: dict[str, Any], clients: dict[str, Any]) 
             )
         )
     if source == "predict_fun":
-        client = clients.get(source) or PredictOddsClient.from_env()
-        return predict_fun_response_to_events(client.get_football_odds(league=scan["league"], date=scan["date"]))
+        # Use the search-based fetcher (direct /v1/search, no PredictOddsClient)
+        from .predict_fun_odds import fetch_predict_fun_odds_by_date
+        return fetch_predict_fun_odds_by_date(
+            league=scan["league"],
+            date=scan["date"],
+        )
     if source == "polymarket":
         client = clients.get(source) or PolymarketClient.from_env()
         options = config.get("polymarket", {})
@@ -113,8 +117,10 @@ def predict_fun_response_to_events(response: FootballOddsResponse) -> list[dict[
             )
             for outcome in market.outcomes:
                 name = _predict_fun_market_name(market, outcome)
-                if name:
-                    _set_best_price(event["markets"], name, outcome.odds)
+                price = outcome.odds
+                odds = _probability_to_decimal(price)
+                if name and odds is not None:
+                    _set_best_price(event["markets"], name, odds)
     return [event for event in events.values() if event["home_team"] and event["away_team"] and event["markets"]]
 
 

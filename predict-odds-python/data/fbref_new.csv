@@ -1,0 +1,59 @@
+date,home_team,away_team,home_score,away_score,competition,season,home_xg,away_xg,home_possession,away_possession,home_shots,away_shots,home_shots_on_target,away_shots_on_target
+2026-06-11,Argentina,New Zealand,3,0,FIFA World Cup,2026,2.88,0.43,66,34,26,4,11,1
+2026-06-11,Egypt,Jordan,2,1,FIFA World Cup,2026,2.0,0.7,52,48,18,6,6,3
+2026-06-11,France,Haiti,4,0,FIFA World Cup,2026,3.5,0.33,58,42,19,2,12,1
+2026-06-11,Uruguay,DR Congo,2,1,FIFA World Cup,2026,2.04,0.9,55,45,18,7,8,3
+2026-06-11,Brazil,Uzbekistan,2,0,FIFA World Cup,2026,2.79,0.76,51,49,27,5,13,2
+2026-06-11,Switzerland,Scotland,3,1,FIFA World Cup,2026,2.85,1.1,49,51,16,8,10,5
+2026-06-11,England,Iran,3,0,FIFA World Cup,2026,3.04,0.69,51,49,18,5,13,3
+2026-06-11,Germany,Ghana,3,1,FIFA World Cup,2026,2.88,1.13,62,38,17,8,11,5
+2026-06-11,Spain,Panama,2,0,FIFA World Cup,2026,2.36,0.42,56,44,16,4,9,1
+2026-06-12,Netherlands,Japan,2,1,FIFA World Cup,2026,2.85,1.37,58,42,21,12,14,5
+2026-06-12,Tunisia,Japan,0,2,FIFA World Cup,2026,0.78,1.95,38,62,5,13,2,10
+2026-06-12,Portugal,Colombia,1,1,FIFA World Cup,2026,1.66,1.16,56,44,11,10,5,6
+2026-06-12,Belgium,Iran,3,0,FIFA World Cup,2026,2.28,0.77,47,53,24,4,12,2
+2026-06-12,Mexico,South Africa,2,0,FIFA World Cup,2026,2.12,0.53,44,56,20,4,8,2
+2026-06-12,Austria,Algeria,2,1,FIFA World Cup,2026,2.06,0.8,61,39,13,4,11,3
+2026-06-13,USA,Paraguay,1,0,FIFA World Cup,2026,1.68,0.63,58,42,11,4,8,2
+2026-06-13,Ivory Coast,Turkey,1,1,FIFA World Cup,2026,0.92,0.85,51,49,7,5,4,4
+2026-06-13,Croatia,Ghana,2,0,FIFA World Cup,2026,1.92,0.62,60,40,21,3,8,3
+2026-06-13,Australia,Czech Republic,0,2,FIFA World Cup,2026,0.86,1.67,36,64,7,14,2,7
+2026-06-14,Morocco,Haiti,3,0,FIFA World Cup,2026,2.38,0.58,45,55,15,5,5,2
+2026-06-14,Senegal,Iraq,4,0,FIFA World Cup,2026,3.71,0.65,60,40,32,4,11,3
+2026-06-14,South Korea,Czechia,1,0,FIFA World Cup,2026,1.55,0.6,52,48,15,6,4,1
+2026-06-14,Canada,Bosnia and Herzegovina,1,1,FIFA World Cup,2026,1.15,0.77,41,59,9,7,3,3
+2026-06-14,Saudi Arabia,Cape Verde,2,1,FIFA World Cup,2026,1.66,0.72,37,63,17,4,7,3
+2026-06-16,Argentina,Egypt,2,0,FIFA World Cup,2026,1.98,0.84,67,33,17,7,4,2
+2026-06-16,New Zealand,Jordan,0,1,FIFA World Cup,2026,0.79,0.79,39,61,6,7,2,2
+2026-06-16,Sweden,Tunisia,5,1,FIFA World Cup,2026,4.29,0.99,45,55,38,7,19,5
+2026-06-16,Netherlands,Sweden,2,1,FIFA World Cup,2026,1.99,1.08,53,47,11,6,9,2
+2026-06-16,Brazil,Morocco,3,1,FIFA World Cup,2026,2.93,1.33,49,51,21,12,14,3
+2026-06-16,Scotland,Haiti,2,0,FIFA World Cup,2026,1.76,0.76,36,64,14,5,7,2
+2026-06-16,France,Senegal,2,1,FIFA World Cup,2026,2.19,1.12,62,38,16,7,11,5
+2026-06-16,Norway,Iraq,2,0,FIFA World Cup,2026,2.04,0.57,60,40,16,5,10,2
+2026-06-16,England,Croatia,1,0,FIFA World Cup,2026,1.8,0.95,64,36,14,10,4,3
+2026-06-16,Ghana,Panama,1,1,FIFA World Cup,2026,1.31,0.77,44,56,10,6,3,2
+2026-06-16,Germany,Uruguay,2,0,FIFA World Cup,2026,2.25,0.91,59,41,16,5,9,4
+2026-06-17,Netherlands,Tunisia,4,0,FIFA World Cup,2026,3.21,0.7,62,38,28,4,12,2
+2026-06-17,Japan,Sweden,2,1,FIFA World Cup,2026,1.89,0.95,44,56,18,5,5,5
+2026-06-17,Spain,DR Congo,3,0,FIFA World Cup,2026,3.03,0.39,50,50,26,2,8,1
+2026-06-17,Saudi Arabia,Uzbekistan,2,0,FIFA World Cup,2026,1.79,0.32,47,53,16,2,7,1
+2026-06-17,Portugal,Belgium,1,0,FIFA World Cup,2026,1.79,0.8,56,44,10,8,6,4
+2026-06-17,Colombia,Iran,2,1,FIFA World Cup,2026,1.87,0.9,51,49,13,7,7,3
+2026-06-18,Mexico,Austria,2,1,FIFA World Cup,2026,1.95,1.52,43,57,13,16,5,4
+2026-06-18,Algeria,South Africa,1,1,FIFA World Cup,2026,0.86,0.88,40,60,7,9,3,4
+2026-06-18,USA,Ivory Coast,1,0,FIFA World Cup,2026,1.27,0.73,55,45,13,4,3,2
+2026-06-18,Paraguay,Turkey,0,1,FIFA World Cup,2026,0.76,0.7,38,62,8,7,2,3
+2026-06-18,Australia,Costa Rica,2,1,FIFA World Cup,2026,1.81,1.42,39,61,10,10,7,7
+2026-06-18,Czech Republic,Cameroon,2,0,FIFA World Cup,2026,1.74,0.66,35,65,17,4,4,3
+2026-06-19,Czechia,South Africa,1,1,FIFA World Cup,2026,1.12,0.71,36,64,10,6,2,2
+2026-06-19,Switzerland,Bosnia and Herzegovina,4,1,FIFA World Cup,2026,2.96,0.76,43,57,26,7,12,2
+2026-06-19,Canada,Qatar,6,0,FIFA World Cup,2026,2.41,0.71,54,46,22,6,8,3
+2026-06-19,Mexico,South Korea,1,0,FIFA World Cup,2026,1.24,0.98,50,50,13,9,4,2
+2026-06-20,USA,Australia,2,0,FIFA World Cup,2026,2.09,0.74,42,58,17,4,8,3
+2026-06-20,Scotland,Morocco,0,1,FIFA World Cup,2026,0.8,1.4,47,53,5,11,3,3
+2026-06-20,Brazil,Haiti,3,0,FIFA World Cup,2026,3.07,0.34,66,34,32,3,9,1
+2026-06-20,Turkey,Paraguay,0,1,FIFA World Cup,2026,0.84,1.46,37,63,8,9,2,4
+2026-06-21,Netherlands,Sweden,5,1,FIFA World Cup,2026,3.79,1.14,70,30,37,10,9,4
+2026-06-21,Germany,Ivory Coast,2,1,FIFA World Cup,2026,2.11,1.22,61,39,19,10,8,4
+2026-06-21,Ecuador,Curaçao,0,0,FIFA World Cup,2026,0.91,0.75,45,55,8,4,3,3
