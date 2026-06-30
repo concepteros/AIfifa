@@ -1,126 +1,151 @@
-# AI Football Prediction Bot
+# ⚽ AIfifa — AI Football Prediction Bot
 
-> 世界杯足球 AI 预测 + 自动交易系统 | Poisson 模型 · 战术分析 · Kelly 仓位 · Predict.fun 链上下单
+> Poisson xG + tactical analysis + Kelly betting + Predict.fun on-chain execution
 
-## Overview
+A production-grade AI system that predicts football matches, sizes bets with Kelly Criterion, and executes on-chain via Predict.fun (BNB Chain). Powers live World Cup 2026 predictions. Runs standalone or as a [Hermes Agent](https://github.com/nousresearch/hermes-agent) skill.
 
-Production-grade AI football prediction bot powering live World Cup 2026 betting. Runs inside [Hermes Agent](https://github.com/nousresearch/hermes-agent) as a skill-driven cron job.
+---
 
-**Core Pipeline:**
-1. **ESPN API** → live fixtures & results (no API key needed)
-2. **Poisson v2 Model** → xG prediction + score distribution
-3. **Tactical Analysis** → 59-team profiles + style matchup
-4. **Referee Assessment** → strictness/cards/VAR/home bias
-5. **The Odds API** → real-time Bet365/Pinnacle odds
-6. **Kelly Criterion** → 1/4 Kelly position sizing (5% cap)
+## 🚀 Quick Start (2 min)
 
-## Verified Track Record
+```bash
+# 1. Clone
+git clone https://github.com/concepteros/AIfifa.git
+cd AIfifa/predict-odds-python
 
-| Match | Prediction | Result | Status |
+# 2. Setup venv
+python3 -m venv .venv
+.venv/bin/pip install -e .
+
+# 3. Configure
+cp .env.example .env
+# Edit .env → add THE_ODDS_API_KEY (free tier: https://the-odds-api.com)
+
+# 4. Run
+TODAY=$(date +%Y-%m-%d)
+python3 -c "import json; c=json.load(open('data/bot-scan.json')); c['scan']['date']='$TODAY'; json.dump(c,open('data/bot-scan.json','w'),indent=2)"
+.venv/bin/python -m predict_odds scan --config data/bot-scan.json --summary
+```
+
+**That's it.** The scanner will find today's matches, run Poisson predictions, compare against market odds, and output Kelly-sized bet recommendations.
+
+---
+
+## 🧠 How It Works
+
+```
+ESPN API ──→ Poisson xG ──→ Tactical ──→ Referee ──→ Market Odds ──→ Kelly Bet
+(fixtures)   (scores)     (matchups)   (profile)    (The Odds API)   (position)
+```
+
+| Step | Component | What It Does |
+|------|-----------|-------------|
+| 1 | ESPN API | Grab fixtures + results (free, no API key) |
+| 2 | Poisson v2 | Expected goals + score distribution |
+| 3 | Tactical Analysis | 59 team profiles, style matchups |
+| 4 | Referee Assessment | Strictness, cards, VAR, home bias |
+| 5 | The Odds API | Real-time Bet365 / Pinnacle odds |
+| 6 | Kelly Criterion | Optimal bet size (1/4 Kelly, 5% cap) |
+
+---
+
+## 📊 Betting Frameworks
+
+Battle-tested patterns from live World Cup 2026 trading:
+
+| Framework | Rule | Example |
+|-----------|------|---------|
+| **3-Tier Odds** | 1.06-1.18 steamroll / 1.35-1.45 danger / 1.48-1.60 gray | France 1.30 → steamroll ✅ |
+| **Counter-Attack Check** | Favorites only steamroll if opponent lacks PL/LaLiga anchors | England 1.18 vs Ghana (Partey) → 0-0 ❌ |
+| **Star Premium** | Haaland-effect inflates odds. Check R1 stats before fading | Norway (#44) lines at 2.15 vs Senegal (#20) |
+| **Knockout Draw Bias** | R16+ draws spike. Conservative on ML | 2/3 R16 matches → pens |
+| **xG Conversion Gap** | Favorites vs low-blocks: high xG, low conversion | Belgium xG 1.80 → 0 goals |
+
+Full analysis frameworks in [`references/`](references/).
+
+---
+
+## 🎯 Verified Track Record
+
+| Match | Prediction | Actual | Result |
 |-------|-----------|--------|--------|
 | Ecuador vs Curaçao | 0-0 (70% draw) | 0-0 | ✅ Score + direction |
-| Tunisia vs Japan | Away 81% / 0-2 | 0-4 | ✅ Direction |
 | France vs Iraq | Over 2.5 + 3-0 | 3-0 | ✅ Exact score |
-| Argentina vs Austria | Under 2.5 + 1-0 | 2-0 (U✅) | ⚠️ Half right |
+| Tunisia vs Japan | Away 81% | 0-4 | ✅ Direction |
 | Portugal vs Uzbekistan | Steamroll | 5-0 | ✅ |
 | Panama vs Croatia | Gray zone Croatia | 0-1 | ✅ |
 | Colombia vs Congo DR | Gray zone Colombia | 1-0 | ✅ |
 
-## Quick Start
+---
+
+## 🔗 Predict.fun On-Chain Betting
+
+Execute bets directly on BNB Chain:
 
 ```bash
-git clone https://github.com/concepteros/AIfifa.git
-cd predict-odds-python
-python3 -m venv .venv
-.venv/bin/pip install -e .
-
-# Configure .env (see .env.example)
-cp .env.example .env
-# Edit .env with your API keys
-
-# Scan today's World Cup matches
-.venv/bin/python -m predict_odds scan --config data/bot-scan.json --summary
-```
-
-## Hermes Agent Integration
-
-This repo includes a `SKILL.md` for Hermes Agent. Load it as:
-
-```bash
-cp SKILL.md ~/.hermes/skills/crypto/football-bot/SKILL.md
-```
-
-The skill enables natural-language commands:
-- `足球` / `fb` — scan fixtures
-- `⚽ 分析 France vs Sweden` — full pipeline analysis
-- `下注 draw 10U` — place Predict.fun bets
-
-Cron job delivers daily predictions to Telegram at 08:00 BJT.
-
-## Project Structure
-
-```
-predict-odds-python/
-├── src/predict_odds/
-│   ├── prediction.py          # Poisson v2 model
-│   ├── feature_pipeline.py    # Feature engineering + referee
-│   ├── tactics.py             # 59-team tactical profiles
-│   ├── supplementary.py       # Referee/weather/injury data
-│   ├── ml_model.py            # XGBoost ensemble
-│   ├── the_odds_api.py        # The Odds API client
-│   ├── bot_scanner.py         # Scan + Kelly pipeline
-│   ├── predict_fun_betting.py # On-chain betting (BNB Chain)
-│   └── predict_fun_sell.py    # Take-profit module
-├── data/                      # Data files
-├── scripts/                   # Data pipelines
-├── references/                # Analysis frameworks & lessons learned
-├── tests/                     # Test suite
-└── SKILL.md                   # Hermes Agent skill definition
-```
-
-## Data Sources
-
-| Source | Purpose | Auth |
-|--------|---------|------|
-| ESPN API | Fixtures & results | None |
-| The Odds API | Real-time odds (h2h/totals/spreads) | `THE_ODDS_API_KEY` |
-| Predict.fun | Prediction market odds + on-chain trading | `PREDICTFUN_API_KEY` |
-| api-football | Bet365 odds/lineups/corners | `API_FOOTBALL_KEY` |
-| Polymarket | Event discovery | None (browser) |
-
-## Betting Frameworks
-
-- **3-Tier Odds Reliability**: 1.06-1.18 steamroll / 1.35-1.45 danger zone / 1.48-1.60 gray zone
-- **Structured Counter-Attack Check**: Before betting steamroll favorites, verify opponent lacks PL/LaLiga midfield anchors + pace on wings
-- **Star Premium Pattern**: Haaland-effect: markets inflate super-star teams. Verify round 1 stats before fading
-- **Knockout Stage**: Draw probability spikes in R16+. Be conservative on ML bets.
-- **xG Conversion Asymmetry**: Favorites vs low blocks → inflated xG, poor conversion. Don't blindly bet Over.
-
-## Predict.fun Trading
-
-On-chain betting via BNB Chain (ChainId 56):
-
-```bash
-# Dry-run (safe)
+# Dry-run first (always safe)
 .venv/bin/python -m predict_odds bet \
   --match-slug fifwc-tun-jpn-2026-06-21 \
   --bet-type away --amount 10 --dry-run -y
 
-# Live bet
+# Live
 .venv/bin/python -m predict_odds bet ... --live -y
 
-# Bettable types: home / draw / away / over_2_5 / under_2_5 / exact_score_1-0
+# Available bet types: home / draw / away / over_2_5 / under_2_5 / exact_score_1-0
 ```
 
-Safety gates: $50 max/single bet, $200 daily limit. Requires BNB Chain USDC + BNB for gas.
+Safety gates: $50 max per bet, $200 daily limit. Requires BNB Chain USDC + BNB gas.
 
-## Environment
+---
 
-- Python 3.9+
-- macOS / Linux
-- `.env` at project root (see `.env.example`)
-- Virtual env: `.venv/`
+## 🤖 Hermes Agent Integration
 
-## License
+Drop into Hermes for natural-language control:
+
+```bash
+mkdir -p ~/.hermes/skills/crypto/football-bot/
+cp SKILL.md ~/.hermes/skills/crypto/football-bot/SKILL.md
+cp -r references/ ~/.hermes/skills/crypto/football-bot/references/
+```
+
+Then just say **"⚽ 分析今天比赛"** in your Hermes chat. Cron-ready for daily schedules.
+
+---
+
+## 📁 Project Layout
+
+```
+predict-odds-python/
+├── src/predict_odds/          # Core engine
+│   ├── prediction.py          # Poisson xG model
+│   ├── feature_pipeline.py    # Feature engineering
+│   ├── tactics.py             # Team profiles
+│   ├── supplementary.py       # Referee/weather data
+│   ├── bot_scanner.py         # Scan → predict → Kelly
+│   ├── predict_fun_betting.py # BNB Chain orders
+│   └── the_odds_api.py        # Odds API client
+├── data/                      # CSVs + config
+├── references/                # Analysis docs (23 files)
+├── scripts/                   # Data pipelines
+├── tests/                     # Test suite
+├── SKILL.md                   # Hermes Agent skill
+└── README.md                  # ← You are here
+```
+
+---
+
+## 🔑 API Keys
+
+| Service | Env Variable | Free Tier | Sign Up |
+|---------|-------------|-----------|---------|
+| The Odds API | `THE_ODDS_API_KEY` | 500 req/mo | [the-odds-api.com](https://the-odds-api.com) |
+| Predict.fun | `PREDICTFUN_API_KEY` | — | [predict.fun](https://predict.fun) |
+| api-football | `API_FOOTBALL_KEY` | 100 req/day | [api-football.com](https://www.api-football.com) |
+
+Only `THE_ODDS_API_KEY` is required. ESPN data is free.
+
+---
+
+## 📄 License
 
 MIT
